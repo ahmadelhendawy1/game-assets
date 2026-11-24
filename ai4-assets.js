@@ -55,19 +55,21 @@
       L.audio(key('sfx-' + n), [BASE + 'audio/sfx/' + n + '.ogg', BASE + 'audio/sfx/' + n + '.mp3']);
     });
     var moods = opts.music === false ? [] : (opts.music || null);
-    var ids = packId ? [].concat(packId) : [], loaded = [], moodsFromPacks = [];
+    var ids = packId ? [].concat(packId) : [], loaded = [], moodsFromPacks = [], want = {};
     ids.forEach(function (id) {
       var data = PACKS[id];
       if (!data) { if (root.console) console.warn('[AI4Assets] unknown pack "' + id + '" - using drawn placeholders'); return; }
       state.packs[id] = data; loaded.push(data);
-      Object.keys(data.files).forEach(function (name) {
-        var k = key(name);
-        // Packs share names (boss, coin, ground...): the pack loaded last owns the name, so replace the old image.
-        if (state.owner[k] && state.owner[k] !== id && scene.textures.exists(k)) scene.textures.remove(k);
-        state.owner[k] = id; delete state.failed[k];
-        L.image(k, BASE + 'packs/' + id + '/' + data.files[name]);
-      });
+      // Packs share names (boss, coin, ground...): the pack listed LAST wins. Decide first, queue each name once,
+      // because Phaser keeps the first file queued under a key and ignores later ones.
+      Object.keys(data.files).forEach(function (name) { want[name] = { id: id, file: data.files[name] }; });
       [data.music, data.bossMusic].forEach(function (m) { if (m && moodsFromPacks.indexOf(m) < 0) moodsFromPacks.push(m); });
+    });
+    Object.keys(want).forEach(function (name) {
+      var k = key(name), w = want[name];
+      if (state.owner[k] && state.owner[k] !== w.id && scene.textures.exists(k)) scene.textures.remove(k);
+      state.owner[k] = w.id; delete state.failed[k];
+      L.image(k, BASE + 'packs/' + w.id + '/' + w.file);
     });
     scene.registry.set(P + 'packs', loaded);
     (moods || moodsFromPacks).filter(Boolean).forEach(addMusic);

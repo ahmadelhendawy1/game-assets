@@ -18,6 +18,13 @@
 <body>
 <div id="game"></div>
 <div id="hud" data-hud>Sail right with <b>← →</b>, hop over rocks with <b>↑</b>. Coins: <b id="coins">0</b></div>
+<div id="screen-end" style="display:none;position:absolute;inset:0;z-index:20;background:rgba(8,30,60,.82);align-items:center;justify-content:center;text-align:center">
+  <div style="background:#fffdf5;color:#1b1b3a;border:4px solid #fcd34d;border-radius:24px;padding:28px 40px">
+    <div style="font-size:26px;font-weight:900">Voyage complete! 🏆</div>
+    <div style="font-size:54px;font-weight:900;color:#1d4ed8" id="final">0 / 3</div>
+    <button id="again" style="margin-top:8px;padding:12px 26px;border:0;border-radius:999px;background:#ea580c;color:#fff;font:800 18px system-ui;cursor:pointer">Play again</button>
+  </div>
+</div>
 <div id="touch"><div><button id="tl">◀</button><button id="tr">▶</button></div><div><button id="tu">▲</button><button id="ts" class="sail">SAIL</button></div></div>
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
 <script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@9b418bf8ccd6459151a91845514a2c003be7408c/ai4-assets.js"></script>
@@ -38,96 +45,145 @@
     preload: function () { A.preload(this, { pack: ['runner-desert', 'sea'], music: ['sea', 'boss'] }); },
     create: function () {
       var s = this, coins = 0, hud = document.getElementById('hud');
+      var QUESTIONS = [
+        { q: 'Yesterday, I ___ to the park with my friends.', a: ['went', 'go', 'goes', 'going'], why: '"Yesterday" needs the past simple: go → went.' },
+        { q: 'She ___ a cake last Sunday.', a: ['made', 'makes', 'make', 'making'], why: '"Last Sunday" is finished time: make → made.' },
+        { q: 'They ___ football after school yesterday.', a: ['played', 'play', 'plays', 'playing'], why: 'Regular verbs add -ed in the past simple: played.' }
+      ];
+      var ZONES = [2600, 4700, 6800], BOSS_X = 8700, LEVEL_W = 9400, total = QUESTIONS.length;
+      var score = 0, qi = -1, asked = false, done = false, near = -1, buoys = [], ended = false, bossHp = total;
       s.cameras.main.setBounds(0, 0, LEVEL_W, 720);
-      var bg = A.parallax(s, { farFactor: 0.08 });                  // sky, mountains, city on the coast
+      A.parallax(s, { farFactor: 0.08 });                            // sky, mountains, coast
       var sea = A.sea(s, { level: 520, amplitude: 16 });
 
       var boat = s.add.image(200, 500, K('boat-side')).setOrigin(0.5, 0.95).setScale(0.8).setDepth(30);
       sea.float(boat, { sink: 14, tilt: 1 });
-      var hop = 0, hopV = 0, vx = 0;
+      var hop = 0, hopV = 0, vx = 0, hurtUntil = -9999, lastHit = -9999;
 
-      // things floating on the waves
-      var rocks = [900, 1600, 2300].map(function (x) { return sea.float(s.add.image(x, 0, K('rocks')).setOrigin(0.5, 0.75).setScale(0.6).setDepth(25), { sink: 6, tilt: 0 }); });
+      // hazards and coins between the question zones (never inside a zone)
+      var rocks = [900, 1700, 2250, 4050, 6150, 8150].map(function (x) { return sea.float(s.add.image(x, 0, K('rocks')).setOrigin(0.5, 0.75).setScale(0.6).setDepth(25), { sink: 6, tilt: 0 }); });
       var coinList = [];
-      for (var x = 500; x < 2800; x += 170) coinList.push(sea.float(s.add.image(x, 0, K('coin')).setScale(0.42).setDepth(26), { sink: -70 - (x % 340 ? 0 : 40), tilt: 0.3 }));
-      var shark = sea.float(s.add.image(1900, 0, K('shark')).setScale(0.7).setDepth(26), { sink: -6, tilt: 0.6 });
+      for (var x = 500; x < 8200; x += 170) { if (ZONES.some(function (z) { return x > z - 150 && x < z + 1250; })) continue; coinList.push(sea.float(s.add.image(x, 0, K('coin')).setScale(0.42).setDepth(26), { sink: -70 - (x % 340 ? 0 : 40), tilt: 0.3 })); }
+      var sharks = [1300, 4450, 6550].map(function (x) { var f = sea.float(s.add.image(x, 0, K('shark')).setScale(0.7).setDepth(26), { sink: -6, tilt: 0.6 }); f.setData('home', x); return f; });
+      var inZone = function (x) { return ZONES.some(function (z) { return x > z - 220 && x < z + 1300; }); };
+      rocks.concat(sharks).forEach(function (o) { if (inZone(o.x)) console.warn('hazard inside a question zone at', o.x); });
       var fishT = 0;
 
-      // choice zone: 4 buoys in ONE row, wide gaps
-      var ZONE = 3300, answers = ['went', 'goes', 'go', 'going'], correct = 0, buoys = [], asked = false, done = false, near = -1;
-      Phaser.Utils.Array.Shuffle([0, 1, 2, 3]).forEach(function (ai, i) {
-        var b = s.add.image(ZONE + 250 + i * 260, 0, K('buoy')).setOrigin(0.5, 0.8).setScale(0.75).setDepth(25);
-        b.setData('a', ai); sea.float(b, { sink: 8, tilt: 0.8 }); buoys.push(b);
-      });
-      var monster = s.add.image(ZONE + 1500, 0, K('boss')).setOrigin(0.5, 0.75).setScale(0.55).setDepth(24);
-      sea.float(monster, { sink: 40, tilt: 0.4 });
+      // boss: the sea monster, with a health bar in the HUD
+      var monster = sea.float(s.add.image(BOSS_X, 0, K('boss')).setOrigin(0.5, 0.75).setScale(0.55).setDepth(24).setFlipX(false), { sink: 40, tilt: 0.4 });
 
       s.cameras.main.startFollow(boat, true, 0.1, 0.05, -160, 160);
       var keys = s.input.keyboard.addKeys('LEFT,RIGHT,UP,SPACE,ENTER,A,D,W');
       var music = false; function startMusic() { if (!music) { music = true; A.music(s, 'sea'); } }
       s.input.on('pointerdown', startMusic); s.input.keyboard.on('keydown', startMusic);
-      var hurtUntil = 0;
+      function setHud(html) { hud.innerHTML = html + '<br><small>Score: <b>' + score + ' / ' + total + '</b> · Coins: <b>' + coins + '</b></small>'; }
+      setHud('Sail right with <b>← →</b>, hop over rocks with <b>↑</b>.');
+
+      function startQuestion(i) {
+        qi = i; asked = true; done = false; near = -1; sea.setCalm(true); vx = 0; A.sfx(s, 'go');
+        var Q = QUESTIONS[i], order = Phaser.Utils.Array.Shuffle([0, 1, 2, 3]);
+        buoys = order.map(function (ai, k) {
+          var b = s.add.image(ZONES[i] + 250 + k * 260, 0, K('buoy')).setOrigin(0.5, 0.8).setScale(0.75).setDepth(25);
+          b.setData('a', ai); sea.float(b, { sink: 8, tilt: 0.8 });
+          b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) { boat.x = b.x; commit(k); } });
+          b.lbl = A.label(s, b, Q.a[ai], { offsetY: -8, size: 20 });
+          return b;
+        });
+        setHud('Question ' + (i + 1) + ' of ' + total + ': <b>' + Q.q + '</b><br>Steer to a buoy, then press <b>SAIL</b> (Space / Enter) or tap the buoy.');
+      }
+      function commit(k) {
+        if (done) return; done = true; A.sfx(s, 'commit');
+        var b = buoys[k], right = b.getData('a') === 0, Q = QUESTIONS[qi];
+        buoys.forEach(function (x) { x.disableInteractive(); });
+        
+        s.time.delayedCall(250, function () {
+          if (right) {
+            score++; A.sfx(s, 'correct'); sea.splash(b.x, 1.6); b.lbl.setHighlight(true, '#86efac');
+            s.tweens.add({ targets: s.cameras.main, zoom: 1.05, duration: 180, yoyo: true });
+            setHud('<b>Correct!</b> ' + Q.why);
+          } else {
+            A.sfx(s, 'wrong'); s.cameras.main.shake(220, 0.01); sea.splash(boat.x, 1.4);
+            buoys.forEach(function (x) { if (x.getData('a') === 0) x.lbl.setHighlight(true, '#86efac'); });
+            setHud('Not quite. The answer is <b>"' + Q.a[0] + '"</b>. ' + Q.why);
+          }
+          // after the explanation: clear the buoys, calm off, sail on
+          s.time.delayedCall(2600, function () {
+            buoys.forEach(function (x) { x.lbl.destroy(); sea.unfloat(x); s.tweens.add({ targets: x, alpha: 0, y: x.y + 60, duration: 500, onComplete: function () { x.destroy(); } }); });
+            buoys = []; asked = false; sea.setCalm(false);
+            setHud(qi + 1 < total ? 'Sail on to the next buoys! <b>→</b>' : 'The <b>sea monster</b> is ahead! Sail right <b>→</b>');
+          });
+        });
+      }
+      function bossFight() {
+        ended = true; vx = 0; A.music(s, 'boss'); sea.setCalm(true);
+        setHud('<b>Boss!</b> Every correct answer is a cannonball...');
+        var shots = Math.max(1, score), i = 0;
+        s.time.addEvent({ delay: 700, repeat: shots - 1, callback: function () {
+          var ball = s.add.circle(boat.x + 60, boat.y - 90, 12, 0x1b1b3a).setDepth(40);
+          A.sfx(s, 'shoot');
+          s.tweens.add({ targets: ball, x: monster.x - 40, y: monster.y - 120, duration: 520, ease: 'Quad.in', onComplete: function () {
+            ball.destroy(); A.sfx(s, 'boss-hit'); sea.splash(monster.x - 40, 1.4); s.cameras.main.shake(150, 0.008);
+            monster.setTint(0xff8080); s.time.delayedCall(150, function () { monster.clearTint(); });
+          } });
+          i++;
+        } });
+        s.time.delayedCall(700 * shots + 900, function () {
+          // the boss always goes down after its last question (fair: the score decides nothing here)
+          sea.unfloat(monster); A.sfx(s, 'level-up');
+          s.tweens.add({ targets: monster, y: monster.y + 400, angle: -15, alpha: 0, duration: 1400, ease: 'Quad.in' });
+          sea.splash(monster.x, 2.2);
+          s.time.delayedCall(1600, showEnd);
+        });
+      }
+      function showEnd() {
+        A.stopMusic(); A.sfx(s, 'victory'); sea.setCalm(false);
+        var end = document.getElementById('screen-end');
+        document.getElementById('final').textContent = score + ' / ' + total;
+        end.style.display = 'flex';
+        window.AI4Game && window.AI4Game.reportComplete && window.AI4Game.reportComplete(score, total);
+      }
+      document.getElementById('again').onclick = function () { document.getElementById('screen-end').style.display = 'none'; s.scene.restart(); };
 
       s.events.on('update', function (time, delta) {
         var dt = delta / 1000;
         var L = keys.LEFT.isDown || keys.A.isDown || input.left, R = keys.RIGHT.isDown || keys.D.isDown || input.right;
         var U = Phaser.Input.Keyboard.JustDown(keys.UP) || Phaser.Input.Keyboard.JustDown(keys.W) || (input.up && !input._u); input._u = input.up;
         var S = Phaser.Input.Keyboard.JustDown(keys.SPACE) || Phaser.Input.Keyboard.JustDown(keys.ENTER) || (input.sail && !input._s); input._s = input.sail;
-        var target = time < hurtUntil ? 0 : (R ? 260 : L ? -200 : 40);
-        if (asked && !done) target = R ? 200 : L ? -200 : 0;
+        var target = ended ? 0 : time < hurtUntil ? -90 : (R ? 260 : L ? -200 : 40);
+        if (asked) target = done ? 0 : (R ? 200 : L ? -200 : 0);
         vx += (target - vx) * Math.min(1, dt * 3);
-        boat.x = Phaser.Math.Clamp(boat.x + vx * dt, 120, LEVEL_W - 200);
-        if (asked && !done) boat.x = Phaser.Math.Clamp(boat.x, ZONE + 120, ZONE + 250 + 3 * 260 + 60);
+        var minX = 120, maxX = LEVEL_W - 200;
+        if (asked) { minX = ZONES[qi] + 150; maxX = ZONES[qi] + 250 + 3 * 260 + 60; }
+        if (!asked && !ended && qi >= 0 && qi < total) minX = ZONES[qi] + 150;            // no sailing back into an answered zone
+        boat.x = Phaser.Math.Clamp(boat.x + vx * dt, minX, ended ? boat.x : maxX);
         boat.setFlipX(vx < -20);
-        // hop over rocks (a jump on top of the floating motion)
-        if (U && hop === 0 && !asked) { hopV = -520; A.sfx(s, 'jump'); sea.splash(boat.x, 0.7); }
+        // hop over rocks (on top of the floating motion); off in the choice zone
+        if (U && hop === 0 && hopV === 0 && !asked && !ended) { hopV = -520; A.sfx(s, 'jump'); sea.splash(boat.x, 0.7); }
         if (hop < 0 || hopV < 0) { hopV += 1500 * dt; hop = Math.min(0, hop + hopV * dt); if (hop === 0) { hopV = 0; sea.splash(boat.x, 1); A.sfx(s, 'splash'); } }
         boat.y += hop;
-        // collect coins
-        coinList.forEach(function (c) { if (c.active && Math.abs(c.x - boat.x) < 60 && Math.abs(c.y - (boat.y - 90)) < 90) { c.destroy(); coins++; document.getElementById('coins').textContent = coins; A.sfx(s, 'coin'); } });
-        // rocks and shark only cost coins (game skill never touches the score)
-        rocks.concat([shark]).forEach(function (r) {
-          if (time > hurtUntil + 1200 && Math.abs(r.x - boat.x) < 70 && hop > -40) {   // pass through for a while after a hit: never stuck
-            hurtUntil = time + 500; vx = -90; coins = Math.max(0, coins - 2); document.getElementById('coins').textContent = coins;
+        // coins
+        coinList.forEach(function (c) { if (c.active && Math.abs(c.x - boat.x) < 60 && Math.abs(c.y - (boat.y - 90)) < 90) { c.destroy(); coins++; A.sfx(s, 'coin'); if (!asked) setHud('Sail right with <b>← →</b>, hop over rocks with <b>↑</b>.'); } });
+        // rocks and sharks cost a few coins only; after a hit the boat passes through, so it never gets stuck
+        if (!asked && !ended) rocks.concat(sharks).forEach(function (r) {
+          if (time - lastHit > 1500 && Math.abs(r.x - boat.x) < 70 && hop > -40) {
+            lastHit = time; hurtUntil = time + 450; coins = Math.max(0, coins - 2);
             A.sfx(s, 'hurt'); s.cameras.main.shake(160, 0.006); sea.splash(boat.x + 40, 1.2);
           }
         });
-        shark.x = 1900 + Math.sin(time / 1400) * 220; shark.setFlipX(Math.cos(time / 1400) > 0);
+        sharks.forEach(function (sh, i) { var h = sh.getData('home'); sh.x = h + Math.sin(time / 1400 + i) * 200; sh.setFlipX(Math.cos(time / 1400 + i) > 0); });
         // jumping fish, for life
         fishT -= dt; if (fishT <= 0) { fishT = 1.2 + Math.random(); var fx = s.cameras.main.scrollX + 200 + Math.random() * 900, f = s.add.image(fx, sea.surfaceY(fx), K('fish')).setScale(0.45).setDepth(20);
           sea.splash(fx, 0.5); s.tweens.add({ targets: f, x: fx + 160, duration: 900 }); s.tweens.add({ targets: f, y: f.y - 150, angle: 40, duration: 450, yoyo: true, ease: 'Quad.out', onComplete: function () { sea.splash(f.x, 0.5); f.destroy(); } }); }
-        // choice zone
-        if (!asked && boat.x > ZONE) {
-          asked = true; sea.setCalm(true); A.sfx(s, 'go'); vx = 0;
-          hud.innerHTML = 'Yesterday, I ___ to the park with my friends.<br><small>Steer to a buoy, then press <b>SAIL</b> (Space / Enter) or tap the buoy.</small>';
-          buoys.forEach(function (b) { b.lbl = A.label(s, b, answers[b.getData('a')], { offsetY: -8, size: 20 }); });
-        }
+        // question zones and the boss
+        if (!asked && !ended && qi + 1 < total && boat.x > ZONES[qi + 1]) startQuestion(qi + 1);
+        if (!asked && !ended && qi + 1 === total && boat.x > BOSS_X - 600) bossFight();
         if (asked && !done) {
           var idx = -1; buoys.forEach(function (b, i) { if (Math.abs(boat.x - b.x) < 80) idx = i; });
           if (idx !== near) { if (near >= 0) buoys[near].lbl.setHighlight(false); if (idx >= 0) { buoys[idx].lbl.setHighlight(true); A.sfx(s, 'select'); } near = idx; }
           if (S && idx >= 0) commit(idx);
         }
       });
-      buoys.forEach(function (b, i) { b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) commit(i); }); });
-
-      function commit(i) {
-        done = true; A.sfx(s, 'commit');
-        var b = buoys[i], right = b.getData('a') === correct;
-        s.time.delayedCall(250, function () {
-          if (right) {
-            A.sfx(s, 'correct'); sea.splash(b.x, 1.6); b.lbl.setHighlight(true, '#86efac');
-            hud.innerHTML = '<b>Correct!</b> "went" is the past of "go".';
-            s.tweens.add({ targets: s.cameras.main, zoom: 1.06, duration: 200, yoyo: true });
-            s.time.delayedCall(900, function () { sea.setCalm(false); A.music(s, 'boss'); A.sfx(s, 'boss-hit'); s.cameras.main.flash(200); });
-          } else {
-            A.sfx(s, 'wrong'); s.cameras.main.shake(220, 0.01); sea.splash(boat.x, 1.4);
-            buoys.forEach(function (x) { if (x.getData('a') === correct) x.lbl.setHighlight(true, '#86efac'); });
-            hud.innerHTML = 'Not quite. <b>"went"</b>: "yesterday" needs the past simple.';
-            s.time.delayedCall(1800, function () { sea.setCalm(false); });
-          }
-        });
-      }
-      window.__sea = { scene: s, boat: boat, sea: sea, buoys: buoys };
+      window.__sea = { scene: s, boat: boat, sea: sea, get buoys() { return buoys; }, get score() { return score; }, get qi() { return qi; }, get asked() { return asked; } };
     }
   });
   window.__game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: 1280, height: 720, backgroundColor: '#8ecbf5',
