@@ -19,7 +19,7 @@
  */
 (function (root) {
   'use strict';
-  var VERSION = '1.0.0';
+  var VERSION = '1.1.0';
   var script = document.currentScript;
   var BASE = (script && script.src) ? script.src.replace(/[^\/]*$/, '') : 'https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@v' + VERSION + '/';
   var P = 'ai4-';
@@ -32,7 +32,16 @@
     platform: 0x8d6e3f, crate: 0xa0703c, spikes: 0x9e9e9e, ground: 0x6aa84f, enemy: 0x283593, boss: 0x1a237e,
     'bg-far': 0x8ecbf5, 'bg-mid': 0x7cb342 };
 
-  var state = { packs: {}, muted: false, musicKey: null, musicObj: null, failed: {}, owner: {} };
+  /* Each game has its own music loop, boss loop, victory fanfare and signature effects (audio/games/<game>/).
+     The game is picked from the pack; anything a game doesn't have falls back to the shared sounds in audio/sfx. */
+  var GAME_OF_PACK = { 'runner-desert': 'runner', 'runner-rides': 'runner', sea: 'sea', space: 'space', maze: 'maze', soccer: 'football', castle: 'castle', kart: 'kart' };
+  var SOUNDS = /*SOUNDS*/{"runner":{"sfx":["boss-hit","commit","correct","hurt","jump","land","wrong"],"music":true,"boss":true,"victory":true},"sea":{"sfx":["boss-hit","commit","correct","hurt","shoot","splash","wrong"],"music":true,"boss":true,"victory":true},"space":{"sfx":["boss-hit","commit","correct","hurt","power-up","shoot","wrong"],"music":true,"boss":true,"victory":true},"maze":{"sfx":["boss-hit","coin","commit","correct","door-open","hurt","wrong"],"music":true,"boss":true,"victory":true},"football":{"sfx":["boss-hit","commit","correct","go","hurt","kick-ball","wrong"],"music":true,"boss":true,"victory":true},"castle":{"sfx":["boss-hit","commit","correct","door-open","hurt","shoot","wrong"],"music":true,"boss":true,"victory":true},"kart":{"sfx":["boss-hit","commit","correct","go","hurt","whoosh","wrong"],"music":true,"boss":true,"victory":true}}/*END SOUNDS*/;
+
+  var state = { packs: {}, muted: false, musicKey: null, musicObj: null, fading: [], failed: {}, owner: {}, game: null, vol: { music: 0.4, sfx: 0.8 } };
+  /* The player's sound choice (mute, music and effects volume) is remembered on this device. */
+  var PREFS = 'ai4-sound';
+  try { var pr = JSON.parse(root.localStorage.getItem(PREFS) || 'null'); if (pr) { state.muted = !!pr.muted; if (pr.music >= 0 && pr.music <= 1) state.vol.music = +pr.music; if (pr.sfx >= 0 && pr.sfx <= 1) state.vol.sfx = +pr.sfx; } } catch (e) {}
+  function savePrefs() { try { root.localStorage.setItem(PREFS, JSON.stringify({ muted: state.muted, music: state.vol.music, sfx: state.vol.sfx })); } catch (e) {} }
 
   /* Pack manifests are built into this file (tools/build_loader.py copies every packs/<id>/pack.json here),
      so all files are queued at once. Adding files while the Phaser loader is already running can stall it. */
@@ -51,11 +60,18 @@
     var L = scene.load;
     L.setCORS('anonymous');
     L.on('loaderror', function (file) { if (String(file.key).indexOf(P) === 0) state.failed[file.key] = true; });
-    if (opts.sfx !== false) SFX.forEach(function (n) {
-      L.audio(key('sfx-' + n), [BASE + 'audio/sfx/' + n + '.ogg', BASE + 'audio/sfx/' + n + '.mp3']);
-    });
-    var moods = opts.music === false ? [] : (opts.music || null);
     var ids = packId ? [].concat(packId) : [], loaded = [], moodsFromPacks = [], want = {};
+    // Which game's own sounds to use: opts.sounds ('sea', 'kart' ...) or the last pack that has a game; false = shared sounds only.
+    var game = opts.sounds === false ? null : (typeof opts.sounds === 'string' ? opts.sounds : null);
+    if (opts.sounds !== false && !game) ids.forEach(function (id) { if (GAME_OF_PACK[id]) game = GAME_OF_PACK[id]; });
+    var GS = game && SOUNDS[game]; state.game = GS ? game : null;
+    var GD = BASE + 'audio/games/' + game + '/', own = GS ? GS.sfx.concat(GS.victory ? ['victory'] : []) : [];
+    if (opts.sfx !== false) {
+      SFX.forEach(function (n) { if (own.indexOf(n) < 0) L.audio(key('sfx-' + n), [BASE + 'audio/sfx/' + n + '.ogg', BASE + 'audio/sfx/' + n + '.mp3']); });
+      own.forEach(function (n) { L.audio(key(game + '-sfx-' + n), [GD + (n === 'victory' ? 'victory.mp3' : 'sfx/' + n + '.mp3')]); });
+    }
+    if (GS && opts.music !== false) ['music', 'boss'].forEach(function (m) { if (GS[m]) L.audio(key(game + '-' + m), [GD + m + '.ogg', GD + m + '.mp3']); });
+    var moods = opts.music === false || GS ? [] : (opts.music || null);
     ids.forEach(function (id) {
       var data = PACKS[id];
       if (!data) { if (root.console) console.warn('[AI4Assets] unknown pack "' + id + '" - using drawn placeholders'); return; }
@@ -95,29 +111,91 @@
   }
 
   /* ───────────── sound ───────────── */
+  /* Effects: a new sound each call, so quick repeats overlap. A missing file is skipped silently.
+     'victory' stops the music first, so the fanfare plays alone. */
   function sfx(scene, name, cfg) {
-    var k = key('sfx-' + name);
-    if (state.muted || !scene.cache.audio.exists(k)) return null;
-    try { return scene.sound.play(k, Object.assign({ volume: SFX_VOL[name] || 0.6 }, cfg || {})); } catch (e) { return null; }
-  }
-  function music(scene, mood, cfg) {
-    var k = key('music-' + mood);
-    if (state.musicKey === k && state.musicObj && state.musicObj.isPlaying) return state.musicObj;
-    stopMusic(scene);
-    if (!scene.cache.audio.exists(k)) return null;
+    if (name === 'victory') stopMusic();
+    var gk = state.game ? key(state.game + '-sfx-' + name) : null, k = key('sfx-' + name);
     try {
-      state.musicObj = scene.sound.add(k, Object.assign({ loop: true, volume: 0.32 }, cfg || {}));
-      state.musicKey = k;
-      state.musicObj.play();
-      if (state.muted) state.musicObj.pause();
-      return state.musicObj;
+      if (gk && scene.cache.audio.exists(gk)) k = gk; else gk = null;
+      if (state.muted || !scene.cache.audio.exists(k)) return null;
+      var base = cfg && cfg.volume != null ? cfg.volume : (gk ? 1 : (SFX_VOL[name] || 0.6) / 0.8);
+      return scene.sound.play(k, Object.assign({}, cfg || {}, { volume: Math.min(1, base * state.vol.sfx) }));
     } catch (e) { return null; }
   }
-  function stopMusic() { if (state.musicObj) { try { state.musicObj.stop(); state.musicObj.destroy(); } catch (e) {} } state.musicObj = null; state.musicKey = null; }
+  /* Phaser reports a sound's volume a moment late, so each track's level is kept here (__v). */
+  function vol(snd, v) { snd.__v = v; snd.setVolume(v); }
+  function fade(snd, to, ms, done) {
+    var from = snd.__v == null ? to : snd.__v, t0 = Date.now(), id = (snd.__fade = (snd.__fade || 0) + 1);
+    (function step() {
+      if (snd.__fade !== id) return; // a newer fade took over
+      var p = Math.min(1, (Date.now() - t0) / ms);
+      try { if (!snd.manager) return done && done(); vol(snd, from + (to - from) * p); } catch (e) { return done && done(); }
+      if (p < 1) setTimeout(step, 30); else if (done) done();
+    })();
+  }
+  function kill(snd) { try { snd.stop(); snd.destroy(); } catch (e) {} }
+  /* Music: one looping track at a time. A game with its own sounds plays its loop for any mood, and its boss loop
+     for 'boss'. Switching tracks crossfades over half a second. */
+  function music(scene, mood, cfg) {
+    var k = key('music-' + mood);
+    try {
+      if (state.game) { var gk = key(state.game + (mood === 'boss' ? '-boss' : '-music')); if (scene.cache.audio.exists(gk)) k = gk; }
+      if (state.musicKey === k && state.musicObj && state.musicObj.manager) return state.musicObj;
+      if (!scene.cache.audio.exists(k)) { stopMusic(); return null; }
+      var old = state.musicObj;
+      var m = scene.sound.add(k, Object.assign({}, cfg || {}, { loop: true, volume: 0 }));
+      state.musicObj = m; state.musicKey = k;
+      m.play(); vol(m, 0);
+      if (state.muted) { vol(m, state.vol.music); m.pause(); if (old) kill(old); return m; }
+      fade(m, state.vol.music, 500);
+      if (old) { state.fading.push(old); fade(old, 0, 500, function () { kill(old); state.fading = state.fading.filter(function (o) { return o !== old; }); }); }
+      return m;
+    } catch (e) { return null; }
+  }
+  function stopMusic() {
+    state.fading.forEach(kill); state.fading = [];
+    if (state.musicObj) kill(state.musicObj);
+    state.musicObj = null; state.musicKey = null;
+  }
   function setMuted(scene, m) {
-    state.muted = !!m;
-    if (state.musicObj) { if (m) state.musicObj.pause(); else state.musicObj.resume(); }
+    state.muted = !!m; savePrefs();
+    state.fading.forEach(kill); state.fading = [];
+    try { if (state.musicObj) { if (m) state.musicObj.pause(); else { state.musicObj.__fade = (state.musicObj.__fade || 0) + 1; vol(state.musicObj, state.vol.music); state.musicObj.resume(); } } } catch (e) {}
+    controls.forEach(function (c) { c.sync(); });
     return state.muted;
+  }
+  function setVolume(kind, v) {
+    if (kind !== 'music' && kind !== 'sfx') return;
+    state.vol[kind] = Math.max(0, Math.min(1, +v || 0)); savePrefs();
+    if (kind === 'music' && state.musicObj) try { state.musicObj.__fade = (state.musicObj.__fade || 0) + 1; vol(state.musicObj, state.vol.music); } catch (e) {}
+    controls.forEach(function (c) { c.sync(); });
+  }
+  /* A ready-made sound panel (mute + music + effects sliders) for a pause or settings screen:
+     someDiv.appendChild(AI4Assets.soundControls({ onChange: function (muted) { ... } })) */
+  var controls = [];
+  function soundControls(opts) {
+    opts = opts || {};
+    var ar = opts.lang ? opts.lang === 'ar' : /^ar/i.test(document.documentElement.lang || '') || document.documentElement.dir === 'rtl';
+    var Tx = ar ? { on: '🔊 الصوت شغال', off: '🔇 الصوت مقفول', music: 'الموسيقى', sfx: 'المؤثرات' } : { on: '🔊 Sound on', off: '🔇 Sound off', music: 'Music', sfx: 'Effects' };
+    var box = document.createElement('div'); box.className = 'ai4-sound'; box.dir = ar ? 'rtl' : 'ltr';
+    box.style.cssText = 'display:grid;gap:10px;margin:12px auto;max-width:280px;font:700 15px/1.3 system-ui,"Segoe UI",Tahoma,sans-serif;color:inherit;text-align:start';
+    var btn = document.createElement('button'); btn.type = 'button';
+    btn.style.cssText = 'min-height:44px;border-radius:12px;border:2px solid currentColor;background:transparent;color:inherit;font:inherit;cursor:pointer';
+    function slider(kind, label) {
+      var row = document.createElement('label'); row.style.cssText = 'display:grid;grid-template-columns:6.5em 1fr;align-items:center;gap:8px';
+      var r = document.createElement('input'); r.type = 'range'; r.min = 0; r.max = 100; r.step = 5; r.setAttribute('aria-label', label); r.style.cssText = 'width:100%;min-height:32px;accent-color:#f59e0b';
+      r.addEventListener('input', function () { setVolume(kind, r.value / 100); });
+      var t = document.createElement('span'); t.textContent = label; row.appendChild(t); row.appendChild(r); box.appendChild(row); return r;
+    }
+    box.appendChild(btn);
+    var rm = slider('music', Tx.music), rs = slider('sfx', Tx.sfx);
+    var c = { sync: function () { btn.textContent = state.muted ? Tx.off : Tx.on; rm.value = Math.round(state.vol.music * 100); rs.value = Math.round(state.vol.sfx * 100); } };
+    btn.addEventListener('click', function () {
+      var sc = opts.scene || (root.__ai4LastScene && root.__ai4LastScene.sys && root.__ai4LastScene);
+      setMuted(sc, !state.muted); if (opts.onChange) opts.onChange(state.muted);
+    });
+    controls.push(c); c.sync(); return box;
   }
 
   /* ───────────── parallax backgrounds ───────────── */
@@ -446,6 +524,7 @@
     version: VERSION, base: BASE, sfxNames: SFX.slice(), musicNames: MUSIC.slice(),
     preload: preload, key: key, sfx: sfx, music: music, stopMusic: stopMusic,
     setMuted: function (scene, m) { return setMuted(scene, m); }, isMuted: function () { return state.muted; },
+    setVolume: setVolume, getVolume: function (kind) { return state.vol[kind]; }, soundControls: soundControls, game: function () { return state.game; },
     parallax: parallax, ground: ground, hero: hero, ride: ride, scroller: scroller, sea: sea, label: label, pack: packOf, has: function (scene, n) { return has(scene, n); },
     size: function (scene, n) { var r = null; packsOf(scene).forEach(function (pk) { if (pk.sizes[n]) r = pk.sizes[n]; }); return r; }
   };

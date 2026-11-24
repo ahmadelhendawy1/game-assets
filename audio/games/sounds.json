@@ -1,0 +1,100 @@
+{
+ "runner": {
+  "sfx": [
+   "boss-hit",
+   "commit",
+   "correct",
+   "hurt",
+   "jump",
+   "land",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ },
+ "sea": {
+  "sfx": [
+   "boss-hit",
+   "commit",
+   "correct",
+   "hurt",
+   "shoot",
+   "splash",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ },
+ "space": {
+  "sfx": [
+   "boss-hit",
+   "commit",
+   "correct",
+   "hurt",
+   "power-up",
+   "shoot",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ },
+ "maze": {
+  "sfx": [
+   "boss-hit",
+   "coin",
+   "commit",
+   "correct",
+   "door-open",
+   "hurt",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ },
+ "football": {
+  "sfx": [
+   "boss-hit",
+   "commit",
+   "correct",
+   "go",
+   "hurt",
+   "kick-ball",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ },
+ "castle": {
+  "sfx": [
+   "boss-hit",
+   "commit",
+   "correct",
+   "door-open",
+   "hurt",
+   "shoot",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ },
+ "kart": {
+  "sfx": [
+   "boss-hit",
+   "commit",
+   "correct",
+   "go",
+   "hurt",
+   "whoosh",
+   "wrong"
+  ],
+  "music": true,
+  "boss": true,
+  "victory": true
+ }
+}

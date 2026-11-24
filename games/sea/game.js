@@ -93,7 +93,7 @@
     '<div class="g-touch" id="g-touch"><div><button id="b-l" aria-label="Left">◀</button><button id="b-r" aria-label="Right">▶</button></div><div><button id="b-u" aria-label="' + esc(T.hop) + '">▲</button><button id="b-s" class="sail">' + esc(T.sail) + '</button></div></div>' +
     '<div class="g-screen" id="g-start" style="display:flex"><div class="g-card"><h1 dir="auto">' + esc(D.title || 'Sea Voyage') + '</h1><p>' + esc(T.sub) + (D.school ? ' · ' + esc(D.school) : '') + '</p>' +
       '<input id="g-name" placeholder="' + esc(T.name) + '" dir="auto" maxlength="40" autocomplete="name"><div class="g-err" id="g-nerr"></div><button class="g-big" id="g-go">' + esc(T.start) + '</button></div></div>' +
-    '<div class="g-screen" id="g-paused"><div class="g-card"><h1>' + esc(T.paused) + '</h1><button class="g-big" id="g-resume">' + esc(T.resume) + '</button></div></div>' +
+    '<div class="g-screen" id="g-paused"><div class="g-card"><h1>' + esc(T.paused) + '</h1><div id="g-sound"></div><button class="g-big" id="g-resume">' + esc(T.resume) + '</button></div></div>' +
     '<div class="g-screen" id="screen-end"><div class="g-card"><h1>' + esc(T.done) + '</h1><div class="score" id="g-final">0 / 0</div><p id="g-time"></p>' +
       '<div><button class="g-alt" id="g-certbtn">' + esc(T.cert) + '</button>' + (D.whatsapp ? '<button class="g-alt g-wa" id="g-wa">' + esc(T.wa) + '</button>' : '') + '</div><button class="g-big" id="g-again">' + esc(T.again) + '</button></div></div>' +
     '<div class="g-screen" id="g-cert"><div class="g-card">' + (D.school ? '<div style="font-weight:800;color:#334155" dir="auto">' + esc(D.school) + '</div>' : '') + '<h2>' + esc(T.certTitle) + '</h2><p>' + esc(T.certThat) + '</p>' +
@@ -107,7 +107,7 @@
   if (!window.Phaser || !A) { $('g-start').querySelector('.g-card').innerHTML = '<h1>⚠️</h1><p>' + (AR ? 'مقدرناش نحمّل اللعبة. اتأكد من النت واعمل ريفريش.' : 'The game could not load. Check the internet connection and refresh.') + '</p>'; return; }
 
   /* ───────────── shared state across worlds ───────────── */
-  var G = { score: 0, answered: 0, coins: 0, t0: 0, reported: false, name: '', started: false, muted: false };
+  var G = { score: 0, answered: 0, coins: 0, t0: 0, reported: false, name: '', started: false, muted: A.isMuted() };
   var input = {};
   [['b-l', 'left'], ['b-r', 'right'], ['b-u', 'up'], ['b-s', 'sail']].forEach(function (p) {
     var b = $(p[0]);
@@ -316,6 +316,8 @@
   });
   $('g-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('g-go').click(); });
   function scene() { return game && game.scene.getScene('sea'); }
+  $('g-mute').textContent = G.muted ? '🔇' : '🔊';
+  if (A.soundControls) $('g-sound').appendChild(A.soundControls({ lang: AR ? 'ar' : 'en', onChange: function (m) { G.muted = m; $('g-mute').textContent = m ? '🔇' : '🔊'; } }));
   $('g-mute').addEventListener('click', function () { G.muted = !G.muted; if (scene()) A.setMuted(scene(), G.muted); this.textContent = G.muted ? '🔇' : '🔊'; });
   function pause(on) { var sc = scene(); if (!sc || !G.started || $('screen-end').style.display === 'flex') return; if (on) { sc.scene.pause(); $('g-paused').style.display = 'flex'; } else { sc.scene.resume(); $('g-paused').style.display = 'none'; } }
   $('g-pause').addEventListener('click', function () { pause(true); });
