@@ -322,9 +322,21 @@
     el.className = 'ai4-label'; el.dir = 'auto'; el.textContent = text;
     el.style.cssText = 'position:absolute;left:0;top:0;transform:translate(-50%,-100%);pointer-events:none;white-space:normal;text-align:center;' +
       'max-width:' + (opts.maxWidth || 220) + 'px;padding:6px 12px;border-radius:14px;font:800 ' + (opts.size || 18) + 'px/1.25 system-ui,"Segoe UI",Tahoma,sans-serif;' +
-      'background:' + (opts.bg || 'rgba(255,255,255,.95)') + ';color:' + (opts.color || '#1b1b3a') + ';box-shadow:0 3px 0 rgba(0,0,0,.25);border:3px solid ' + (opts.border || '#1b1b3a') + ';z-index:5';
+      'background:' + (opts.bg || 'rgba(255,255,255,.95)') + ';color:' + (opts.color || '#1b1b3a') + ';box-shadow:0 3px 0 rgba(0,0,0,.25);border:3px solid ' + (opts.border || '#1b1b3a') + ';z-index:2147483000';
     host.appendChild(el);
     var dy = opts.offsetY || 0;
+    /* Never hide under the game's question panel: if the label would overlap it, it goes below the object instead.
+       Mark the panel with data-hud (other common names are matched too). */
+    var AVOID = opts.avoid || '[data-hud], #quiz-banner, #question, #question-bar, .question-bar, .quiz-banner, .hud-question';
+    function overlapsHud(r) {
+      var list = document.querySelectorAll(AVOID);
+      for (var i = 0; i < list.length; i++) {
+        var h = list[i]; if (h === el || h.contains(el)) continue;
+        var q = h.getBoundingClientRect(); if (!q.width || !q.height || getComputedStyle(h).visibility === 'hidden') continue;
+        if (r.left < q.right && r.right > q.left && r.top < q.bottom && r.bottom > q.top) return true;
+      }
+      return false;
+    }
     function place() {
       if (!obj.active) { el.remove(); return; }
       var cam = scene.cameras.main, r = canvas.getBoundingClientRect(), hr = host.getBoundingClientRect();
@@ -336,6 +348,10 @@
       var x = (b.centerX - cam.scrollX) * sx + (r.left - hr.left), y = (b.top + dy - cam.scrollY) * sy + (r.top - hr.top);
       x = Math.max(el.offsetWidth / 2 + 4, Math.min(r.width - el.offsetWidth / 2 - 4, x));
       el.style.left = x + 'px'; el.style.top = Math.max(el.offsetHeight + 4, y) + 'px';
+      if (overlapsHud(el.getBoundingClientRect())) {
+        var below = ((b.bottom != null ? b.bottom : obj.y) - cam.scrollY) * sy + (r.top - hr.top) + el.offsetHeight + 8;
+        el.style.top = Math.min(r.height - 4, below) + 'px';
+      }
     }
     scene.events.on('postupdate', place);
     var api = { el: el, setHighlight: function (on, color) { el.style.background = on ? (color || '#ffe066') : (opts.bg || 'rgba(255,255,255,.95)'); el.style.transform = 'translate(-50%,-100%) scale(' + (on ? 1.08 : 1) + ')'; },
