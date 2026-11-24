@@ -20,7 +20,7 @@
   /* ───────────── text (English + Egyptian Arabic) ───────────── */
   var T = AR ? {
     sub: 'رحلة بحرية تعليمية', name: 'اكتب اسمك', start: 'يلا نبحر ⛵', needName: 'اكتب اسمك الأول',
-    q: 'سؤال', of: 'من', hint: 'حرّك المركب لعوّامة ودوس «أبحر» — أو دوس على العوّامة نفسها',
+    q: 'سؤال', of: 'من', hint: '◀ ▶ اختار عوّامة ودوس «أبحر» — أو دوس على العوّامة نفسها',
     sail: 'أبحر', hop: 'نط', move: 'حرّك المركب بالأسهم ← →، ونط فوق الصخور بـ ↑',
     correct: 'صح! 🎉', wrong: 'مش مظبوط. الإجابة الصح «', wrong2: '».', next: 'كمّل للعوّامات اللي جاية ←',
     world: 'العالم', bossNear: 'وحش البحر قدامك! كمّل ←', boss: 'وحش البحر! كل إجابة صح = قذيفة 💥', worldDone: 'خلّصت العالم ده! 🏆',
@@ -30,7 +30,7 @@
     score: 'النتيجة', coins: 'العملات', student: 'الطالب', game: 'اللعبة', errData: 'بيانات اللعبة ناقصة أو فيها غلط.'
   } : {
     sub: 'A Sea Voyage learning game', name: 'Your name', start: 'Set sail ⛵', needName: 'Type your name first',
-    q: 'Question', of: 'of', hint: 'Steer to a buoy, then press SAIL — or tap the buoy',
+    q: 'Question', of: 'of', hint: '◀ ▶ choose a buoy, then press SAIL — or tap the buoy',
     sail: 'SAIL', hop: 'HOP', move: 'Sail with ← →, hop over rocks with ↑',
     correct: 'Correct! 🎉', wrong: 'Not quite. The answer is “', wrong2: '”.', next: 'Sail on to the next buoys →',
     world: 'World', bossNear: 'The sea monster is ahead! Sail on →', boss: 'Sea monster! Every correct answer is a cannonball 💥', worldDone: 'World complete! 🏆',
@@ -73,8 +73,8 @@
     '.g-card{background:#fffdf5;color:#1b1b3a;border:4px solid #fcd34d;border-radius:24px;padding:24px 30px;text-align:center;width:min(460px,94vw);box-shadow:0 20px 60px rgba(0,0,0,.4)}' +
     '.g-card h1{margin:0 0 4px;font-size:clamp(24px,4vw,34px);font-weight:900;color:#1d4ed8}.g-card p{margin:4px 0 12px;color:#475569}' +
     '.g-card input{width:100%;box-sizing:border-box;padding:12px 14px;font-size:17px;border:2px solid #94a3b8;border-radius:14px;margin:6px 0 4px;text-align:center}' +
-    '.g-big{margin-top:10px;padding:13px 26px;border:0;border-radius:999px;background:#ea580c;color:#fff;font:900 18px inherit;font-family:inherit;cursor:pointer;box-shadow:0 4px 0 #9a3412}' +
-    '.g-alt{margin:6px 4px 0;padding:10px 18px;border:2px solid #1d4ed8;border-radius:999px;background:#fff;color:#1d4ed8;font:800 15px inherit;font-family:inherit;cursor:pointer}' +
+    '.g-big{margin-top:10px;padding:13px 26px;border:0;border-radius:999px;background:#ea580c;color:#fff;font-family:inherit;font-weight:900;font-size:19px;cursor:pointer;box-shadow:0 4px 0 #9a3412}' +
+    '.g-alt{margin:6px 4px 0;padding:10px 18px;border:2px solid #1d4ed8;border-radius:999px;background:#fff;color:#1d4ed8;font-family:inherit;font-weight:800;font-size:15px;cursor:pointer}' +
     '.g-wa{border-color:#16a34a;color:#16a34a}.g-err{color:#b91c1c;font-weight:800;min-height:1.2em}' +
     '#screen-end .score{font-size:56px;font-weight:900;color:#1d4ed8;line-height:1.1;direction:ltr}' +
     '#g-cert .g-card{width:min(640px,96vw);border:8px double #b8860b;background:#fffdf5}#g-cert h2{margin:0;color:#8a6508;font-size:30px}#g-cert .who{font-size:32px;font-weight:900;color:#1d4ed8;border-bottom:2px solid #cbd5e1;padding:4px 20px;display:inline-block;margin:6px 0}' +
@@ -116,7 +116,7 @@
   });
   function hudPills(wi) {
     $('g-world').textContent = '🌊 ' + WORLDS[wi].name;
-    $('g-score').textContent = '⭐ ' + G.score + ' / ' + TOTAL;
+    $('g-score').textContent = '⭐ \u2066' + G.score + ' / ' + TOTAL + '\u2069';   // keep "X / Y" left-to-right in Arabic too
     $('g-coins').textContent = '🪙 ' + G.coins;
   }
   function msg(html, ms) { var m = $('g-msg'); m.innerHTML = html; m.style.display = html ? 'block' : 'none'; clearTimeout(msg._t); if (ms) msg._t = setTimeout(function () { m.style.display = 'none'; }, ms); }
@@ -136,7 +136,7 @@
       var SPEED = 260, SEG = 3000, X0 = 1400;
       var zoneX = QS.map(function (q, i) { return X0 + i * SEG; });
       var BOSS_X = X0 + n * SEG + 600, LEVEL_W = BOSS_X + 900;
-      var qi = -1, asked = false, done = false, near = -1, buoys = [], ended = false, worldScore = 0;
+      var qi = -1, asked = false, done = false, near = -1, buoys = [], ended = false, worldScore = 0, sel = 0, wantCommit = false;
       hudPills(wi); msg(esc(T.move), 4000);
       s.cameras.main.setBounds(0, 0, LEVEL_W, 720);
       var bg = A.parallax(s, { farFactor: 0.08 });
@@ -175,10 +175,13 @@
         buoys = order.map(function (ci, k) {
           var b = s.add.image(start + k * gap, 0, K('buoy')).setOrigin(0.5, 0.8).setScale(0.75).setDepth(25);
           b.setData('c', ci); sea.float(b, { sink: 8, tilt: 0.8 });
-          b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) { boat.x = b.x; commit(k); } });
+          b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) { sel = k; wantCommit = true; } });
           b.lbl = A.label(s, b, Q.choices[ci], { offsetY: -8, size: 20, maxWidth: 230 });
           return b;
         });
+        sel = 0; wantCommit = false;
+        var cam = s.cameras.main; cam.stopFollow();
+        cam.pan(start + (buoys.length - 1) * gap / 2, 360, REDUCED ? 0 : 700, 'Sine.easeInOut');   // every buoy fully on screen
         $('g-qn').textContent = T.q + ' ' + (G.answered + 1) + ' ' + T.of + ' ' + TOTAL;
         $('g-qt').textContent = Q.q; $('g-q').style.display = 'block';
       }
@@ -203,6 +206,7 @@
           s.time.delayedCall(right ? 2400 : 3400, function () {
             buoys.forEach(function (x) { x.lbl.destroy(); sea.unfloat(x); s.tweens.add({ targets: x, alpha: 0, y: x.y + 60, duration: 500, onComplete: function () { x.destroy(); } }); });
             buoys = []; asked = false; sea.setCalm(false);
+            s.cameras.main.startFollow(boat, true, 0.1, 0.05, AR ? 160 : -160, 160);
             msg(esc(qi + 1 < n ? T.next : T.bossNear), 3000);
           });
         });
@@ -235,14 +239,22 @@
         var L = keys.LEFT.isDown || keys.A.isDown || input.left, R = keys.RIGHT.isDown || keys.D.isDown || input.right;
         var U = Phaser.Input.Keyboard.JustDown(keys.UP) || Phaser.Input.Keyboard.JustDown(keys.W) || (input.up && !input._u); input._u = input.up;
         var S = Phaser.Input.Keyboard.JustDown(keys.SPACE) || Phaser.Input.Keyboard.JustDown(keys.ENTER) || (input.sail && !input._s); input._s = input.sail;
+        var JL = Phaser.Input.Keyboard.JustDown(keys.LEFT) || Phaser.Input.Keyboard.JustDown(keys.A) || (input.left && !input._l); input._l = input.left;
+        var JR = Phaser.Input.Keyboard.JustDown(keys.RIGHT) || Phaser.Input.Keyboard.JustDown(keys.D) || (input.right && !input._r); input._r = input.right;
         var target = ended ? 0 : time < hurtUntil ? -90 : (R ? SPEED : L ? -200 : 40);
-        if (asked) target = done ? 0 : (R ? 200 : L ? -200 : 0);
-        vx += (target - vx) * Math.min(1, dt * 3);
+        vx += ((asked ? 0 : target) - vx) * Math.min(1, dt * 3);
         var minX = 120, maxX = LEVEL_W - 300;
-        if (asked) { minX = zoneX[qi] + 150; maxX = zoneX[qi] + 250 + (buoys.length - 1) * 260 + 60; }
-        else if (qi >= 0) minX = zoneX[qi] + 150;                                   // never sail back into an answered zone
-        boat.x = Phaser.Math.Clamp(boat.x + vx * dt, minX, ended ? boat.x : maxX);
-        boat.setFlipX(vx < -20);
+        if (asked && buoys.length) {
+          // buoy line: each left/right press moves exactly one buoy (never in between), the boat glides there
+          if (!done) { if (JR) sel = Math.min(buoys.length - 1, sel + 1); if (JL) sel = Math.max(0, sel - 1); }
+          var tx = buoys[sel].x, d = tx - boat.x, stepX = 520 * dt;
+          boat.x += Math.abs(d) <= stepX ? d : Math.sign(d) * stepX;
+          if (Math.abs(d) > 4) boat.setFlipX(d < 0);
+        } else {
+          if (qi >= 0) minX = zoneX[qi] + 150;                                       // never sail back into an answered zone
+          boat.x = Phaser.Math.Clamp(boat.x + vx * dt, minX, ended ? boat.x : maxX);
+          boat.setFlipX(vx < -20);
+        }
         if (U && hop === 0 && hopV === 0 && !asked && !ended) { hopV = -520; A.sfx(s, 'jump'); sea.splash(boat.x, 0.7); }
         if (hop < 0 || hopV < 0) { hopV += 1500 * dt; hop = Math.min(0, hop + hopV * dt); if (hop === 0) { hopV = 0; sea.splash(boat.x, 1); A.sfx(s, 'splash'); } }
         boat.y += hop;
@@ -265,14 +277,14 @@
         if (!asked && !ended && qi + 1 < n && boat.x > zoneX[qi + 1]) startQuestion(qi + 1);
         if (!asked && !ended && qi + 1 === n && boat.x > BOSS_X - 500) bossFight();
         if (asked && !done) {
-          var idx = -1; buoys.forEach(function (b, i) { if (Math.abs(boat.x - b.x) < 80) idx = i; });
-          if (idx !== near) { if (near >= 0 && buoys[near]) buoys[near].lbl.setHighlight(false); if (idx >= 0) { buoys[idx].lbl.setHighlight(true); A.sfx(s, 'select'); } near = idx; }
-          if (S && idx >= 0) commit(idx);
+          if (sel !== near) { if (near >= 0 && buoys[near]) buoys[near].lbl.setHighlight(false); buoys[sel].lbl.setHighlight(true); if (near >= 0) A.sfx(s, 'select'); near = sel; }
+          if (S) wantCommit = true;
+          if (wantCommit && Math.abs(boat.x - buoys[sel].x) < 6) commit(sel);        // commit the highlighted buoy once the boat is there
         }
       }
       s.events.on('update', tick);
       s.events.once('shutdown', function () { s.events.off('update', tick); buoys.forEach(function (b) { if (b.lbl) b.lbl.destroy(); }); });
-      window.__ai4game = { scene: s, boat: boat, get buoys() { return buoys; }, get asked() { return asked; }, get qi() { return qi; }, world: wi, zoneX: zoneX, rocks: rocks.map(function (r) { return r.x; }), G: G, total: TOTAL };
+      window.__ai4game = { scene: s, boat: boat, get buoys() { return buoys; }, get asked() { return asked; }, get done() { return done; }, get qi() { return qi; }, get answer() { return asked ? QS[qi].answer : -1; }, get sel() { return sel; }, get ended() { return ended; }, world: wi, zoneX: zoneX, rocks: rocks.map(function (r) { return r.x; }), G: G, total: TOTAL };
     }
   });
 
@@ -280,7 +292,7 @@
     A.stopMusic(); A.sfx(s, 'victory');
     var secs = (Date.now() - G.t0) / 1000;
     $('g-final').textContent = G.score + ' / ' + TOTAL;
-    $('g-time').textContent = T.time + ': ' + fmtTime(secs) + ' · 🪙 ' + G.coins;
+    $('g-time').textContent = T.time + ': \u2066' + fmtTime(secs) + '\u2069 · 🪙 ' + G.coins;
     $('screen-end').style.display = 'flex';
     if (!G.reported) { G.reported = true; try { window.AI4Game && window.AI4Game.reportComplete && window.AI4Game.reportComplete(G.score, TOTAL); } catch (e) {} }
     G.endSecs = secs;
@@ -288,7 +300,11 @@
 
   /* ───────────── buttons ───────────── */
   var game = null;
-  try { var pre = window.AI4Game && window.AI4Game.studentName; if (pre) $('g-name').value = pre; } catch (e) {}
+  // the class-code join (tracked games) happens on top of this screen: copy the joined name in when it arrives
+  var namePoll = setInterval(function () {
+    try { var pre = window.AI4Game && window.AI4Game.studentName; if (pre && !$('g-name').value.trim()) $('g-name').value = pre; } catch (e) {}
+    if (G.started) clearInterval(namePoll);
+  }, 400);
   $('g-go').addEventListener('click', function () {
     var nm = $('g-name').value.trim() || (window.AI4Game && window.AI4Game.studentName) || '';
     if (!nm) { $('g-nerr').textContent = T.needName; $('g-name').focus(); return; }
@@ -311,7 +327,7 @@
   });
   $('g-certbtn').addEventListener('click', function () {
     $('g-cname').textContent = G.name;
-    $('g-cscore').textContent = T.score + ': ' + G.score + ' / ' + TOTAL + ' · ' + T.time + ': ' + fmtTime(G.endSecs || 0);
+    $('g-cscore').textContent = T.score + ': \u2066' + G.score + ' / ' + TOTAL + '\u2069 · ' + T.time + ': \u2066' + fmtTime(G.endSecs || 0) + '\u2069';
     $('g-cdate').textContent = new Date().toLocaleDateString(AR ? 'ar-EG' : 'en-GB', { year: 'numeric', month: 'long', day: 'numeric' });
     $('g-cert').style.display = 'flex';
   });
