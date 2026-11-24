@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>Turbo Kart — Past Simple Grand Prix | AI4EduTech</title>
+<style>
+  :root {
+    --bg: #0f172a;
+    --panel: rgba(15, 23, 42, 0.92);
+    --border: rgba(255, 255, 255, 0.16);
+    --accent: #f59e0b;
+    --ok: #22c55e;
+    --err: #ef4444;
+    --txt: #f8fafc;
+    --muted: #cbd5e1;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body {
+    margin: 0; padding: 0; width: 100%; height: 100%;
+    overflow: hidden; background: var(--bg); color: var(--txt);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  #game-wrap {
+    position: relative; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #phaser-root { width: 100%; height: 100%; }
+  #phaser-root canvas { display: block; margin: 0 auto; }
+
+  /* Overlay Layer */
+  #ui-layer {
+    position: absolute; inset: 0; pointer-events: none;
+    display: flex; flex-direction: column; justify-content: space-between;
+    z-index: 20;
+  }
+  .ui-interactive { pointer-events: auto; }
+
+  /* Top HUD Bar */
+  #hud-top {
+    display: none; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 8px 12px;
+    background: linear-gradient(180deg, rgba(15,23,42,0.92), rgba(15,23,42,0.45));
+    font-size: 14px; font-weight: 700;
+  }
+  .hud-pill {
+    background: rgba(30, 41, 59, 0.88);
+    border: 1px solid var(--border);
+    border-radius: 999px; padding: 5px 12px;
+    display: inline-flex; align-items: center; gap: 6px;
+    white-space: nowrap;
+  }
+  .hud-group { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .icon-btn {
+    min-width: 40px; min-height: 40px; padding: 6px 10px;
+    border-radius: 10px; border: 1px solid var(--border);
+    background: rgba(30, 41, 59, 0.92); color: var(--txt);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+  }
+  .icon-btn:active { transform: scale(0.95); }
+  .icon-btn.active-toggle { background: var(--accent); color: #111827; border-color: #fde68a; }
+
+  /* Boss Bar */
+  #boss-bar-wrap {
+    display: none; margin: 4px auto 0; width: min(92%, 440px);
+    background: var(--panel); border: 1px solid #f59e0b;
+    border-radius: 12px; padding: 6px 12px; text-align: center;
+  }
+  #boss-bar-title { font-size: 12px; font-weight: 800; color: #fde047; margin-bottom: 4px; letter-spacing: 0.4px; }
+  #boss-bar-track {
+    width: 100%; height: 12px; background: #1e293b; border-radius: 999px; overflow: hidden;
+  }
+  #boss-bar-fill {
+    width: 100%; height: 100%; background: linear-gradient(90deg, #ef4444, #f59e0b);
+    transition: width 0.45s ease;
+  }
+
+  /* Question Panel (data-hud) */
+  #question-box {
+    display: none; margin: 6px auto 0; width: min(94%, 640px);
+    background: var(--panel); border: 2px solid #38bdf8;
+    border-radius: 16px; padding: 12px 16px; text-align: center;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+  }
+  #question-meta { font-size: 12px; color: #7dd3fc; font-weight: 700; margin-bottom: 4px; }
+  #question-text { font-size: clamp(15px, 2.6vw, 20px); font-weight: 800; line-height: 1.35; }
+  #question-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* Feedback Banner */
+  #feedback-banner {
+    display: none; margin: 8px auto 0; width: min(92%, 600px);
+    border-radius: 14px; padding: 12px 16px; text-align: center;
+    font-size: clamp(14px, 2.2vw, 17px); font-weight: 700;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+  }
+  #feedback-banner.feedback-ok { background: rgba(20, 83, 45, 0.96); border: 2px solid #4ade80; color: #dcfce7; }
+  #feedback-banner.feedback-no { background: rgba(127, 29, 29, 0.96); border: 2px solid #f87171; color: #fee2e2; }
+
+  /* Touch Controls */
+  #touch-bar {
+    display: none; width: 100%; padding: 10px 14px 16px;
+    justify-content: space-between; align-items: flex-end; gap: 10px;
+  }
+  .touch-cluster { display: flex; gap: 10px; }
+  .pad-btn {
+    min-width: 64px; min-height: 60px; padding: 10px 16px;
+    border-radius: 16px; border: 2px solid rgba(255,255,255,0.28);
+    background: rgba(15, 23, 42, 0.82); color: #fff;
+    font-size: 18px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+    touch-action: none;
+  }
+  .pad-btn:active, .pad-btn.pressed { transform: scale(0.94); background: rgba(56, 189, 248, 0.4); }
+  #btn-boost { background: rgba(245, 158, 11, 0.88); color: #111827; border-color: #fde68a; }
+  #btn-pit { display: none; background: rgba(34, 197, 94, 0.92); color: #052e16; border-color: #bbf7d0; min-width: 96px; }
+
+  /* Modal Screens (Menu / WorldMap / Pause / Fallback) */
+  .overlay-card-wrap {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; padding: 16px;
+    background: rgba(2, 6, 23, 0.82); backdrop-filter: blur(4px);
+    z-index: 40; pointer-events: auto;
+  }
+  .overlay-card {
+    width: min(94%, 520px); max-height: 92vh; overflow-y: auto;
+    background: #1e293b; border: 2px solid rgba(255,255,255,0.16);
+    border-radius: 20px; padding: 22px; text-align: center;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+  }
+  .overlay-card h1, .overlay-card h2 { margin: 0 0 8px; }
+  .badge-tag {
+    display: inline-block; background: rgba(245,158,11,0.2); color: #fcd34d;
+    border: 1px solid #f59e0b; border-radius: 999px;
+    padding: 4px 12px; font-size: 12px; font-weight: 800; margin-bottom: 10px;
+  }
+  .input-field {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    border: 2px solid #475569; background: #0f172a; color: #fff;
+    font-size: 16px; margin: 10px 0 14px; user-select: text;
+  }
+  .primary-btn {
+    width: 100%; min-height: 52px; padding: 12px 18px;
+    border-radius: 14px; border: none;
+    background: linear-gradient(135deg, #f59e0b, #ea580c);
+    color: #fff; font-size: 17px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 6px 18px rgba(234, 88, 12, 0.4);
+    margin-top: 8px;
+  }
+  .primary-btn:active { transform: scale(0.98); }
+  .secondary-btn {
+    width: 100%; min-height: 46px; padding: 10px 16px;
+    border-radius: 12px; border: 1px solid #475569;
+    background: #0f172a; color: #e2e8f0; font-size: 15px; font-weight: 700;
+    cursor: pointer; margin-top: 8px;
+  }
+  .track-list { display: flex; flex-direction: column; gap: 10px; margin: 14px 0; text-align: left; }
+  .track-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; border-radius: 12px;
+    background: #0f172a; border: 2px solid #334155;
+  }
+  .track-item.current-track { border-color: #f59e0b; background: rgba(245,158,11,0.12); }
+  .track-item.cleared-track { border-color: #22c55e; }
+
+  /* Final Certificate Screen (#screen-end) */
+  #screen-end {
+    position: absolute; inset: 0; display: none;
+    align-items: center; justify-content: center; padding: 16px;
+    background: rgba(2, 6, 23, 0.9); z-index: 60; pointer-events: auto;
+  }
+  .cert-card {
+    width: min(95%, 560px); max-height: 92vh; overflow-y: auto;
+    background: linear-gradient(180deg, #1e293b, #0f172a);
+    border: 3px solid #f59e0b; border-radius: 22px; padding: 24px;
+    text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.7);
+  }
+  .cert-score-box {
+    margin: 14px auto; padding: 14px 20px; border-radius: 16px;
+    background: rgba(34, 197, 94, 0.14); border: 2px solid #4ade80;
+    font-size: 34px; font-weight: 900; color: #86efac; letter-spacing: 1px;
+  }
+  .cert-sig {
+    margin-top: 16px; padding-top: 12px; border-top: 1px dashed #475569;
+    font-size: 14px; color: var(--muted);
+  }
+  .wa-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 50px; padding: 12px 18px; border-radius: 14px;
+    background: #16a34a; color: #fff; text-decoration: none;
+    font-size: 16px; font-weight: 800; margin-top: 12px;
+  }
+  .fallback-box {
+    display: none; padding: 24px; max-width: 480px; margin: 40px auto;
+    background: #1e293b; border: 2px solid #ef4444; border-radius: 16px; text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <div id="phaser-root"></div>
+
+  <div id="fallback-msg" class="fallback-box">
+    <h2>Game Engine Could Not Load</h2>
+    <p>Please check your internet connection and reload the page to play Turbo Kart.</p>
+  </div>
+
+  <!-- Interactive HTML Overlay -->
+  <div id="ui-layer">
+    <div>
+      <!-- Top HUD -->
+      <div id="hud-top" class="ui-interactive">
+        <div class="hud-group">
+          <span class="hud-pill" id="hud-track">Track 1/3</span>
+          <span class="hud-pill" id="hud-q">Q 1/10</span>
+          <span class="hud-pill" id="hud-points">0 / 10</span>
+          <span class="hud-pill" id="hud-coins">🪙 0</span>
+        </div>
+        <div class="hud-group">
+          <button type="button" class="icon-btn" id="btn-mute" title="Mute / Unmute">🔊</button>
+          <button type="button" class="icon-btn" id="btn-motion" title="Reduced Motion">✨</button>
+          <button type="button" class="icon-btn" id="btn-pause" title="Pause">⏸</button>
+        </div>
+      </div>
+
+      <!-- Boss Lead Bar -->
+      <div id="boss-bar-wrap">
+        <div id="boss-bar-title">🏆 CHAMPION RACER LEAD</div>
+        <div id="boss-bar-track"><div id="boss-bar-fill"></div></div>
+      </div>
+
+      <!-- Question Panel (data-hud) -->
+      <div id="question-box" data-hud>
+        <div id="question-meta">PIT LANE CHALLENGE</div>
+        <div id="question-text"></div>
+        <div id="question-hint">Use ◀ ▶ to pick a garage, then press PIT (Up / Space / Enter) or tap a garage!</div>
+      </div>
+
+      <!-- Explanation / Feedback Banner -->
+      <div id="feedback-banner"></div>
+    </div>
+
+    <!-- Bottom Touch Controls -->
+    <div id="touch-bar" class="ui-interactive">
+      <div class="touch-cluster">
+        <button type="button" class="pad-btn" id="btn-left" aria-label="Steer Left">◀</button>
+        <button type="button" class="pad-btn" id="btn-right" aria-label="Steer Right">▶</button>
+      </div>
+      <div class="touch-cluster">
+        <button type="button" class="pad-btn" id="btn-boost" aria-label="Boost">⚡ BOOST</button>
+        <button type="button" class="pad-btn" id="btn-pit" aria-label="Commit Pit">🏁 PIT</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Overlay -->
+  <div id="screen-menu" class="overlay-card-wrap">
+    <div class="overlay-card">
+      <div class="badge-tag">🏎️ TURBO KART • GRADE 6 ENGLISH</div>
+      <h1>Past Simple Grand Prix</h1>
+      <p style="color:var(--muted); margin:6px 0 12px; font-size:14px;">
+        Race across 3 tracks, dodge hazards, and pull into the right Pit Lane garage to defeat the Champion Racer!
+      </p>
+      <label for="student-name-input" style="display:block; text-align:left; font-size:13px; font-weight:700; color:#cbd5e1;">
+        Racer Name (for your certificate):
+      </label>
+      <input id="student-name-input" class="input-field" type="text" placeholder="Type your name..." maxlength="40" />
+      <button type="button" class="primary-btn" id="btn-start-game">🏁 START RACE</button>
+      <p style="font-size:12px; color:#94a3b8; margin-top:12px;">
+        Controls: ◀ ▶ Steer • Space/Up Boost &amp; Pit • Tap buttons or garages on touch screens
+      </p>
+    </div>
+  </div>
+
+  <!-- World Map Overlay -->
+  <div id="screen-map" class="overlay-card-wrap">
+    <div class="overlay-card">
+      <div class="badge-tag">🗺️ GRAND PRIX CIRCUIT</div>
+      <h2 id="map-heading">Choose Your Next Track</h2>
+      <div class="track-list" id="map-track-list"></div>
+      <button type="button" class="primary-btn" id="btn-launch-track">🚀 DRIVE THIS TRACK</button>
+    </div>
+  </div>
+
+  <!-- Pause Overlay -->
+  <div id="screen-pause" class="overlay-card-wrap">
+    <div class="overlay-card">
+      <h2>⏸ Race Paused</h2>
+      <p style="color:var(--muted); font-size:14px;">Take a breather—your kart is safely parked.</p>
+      <div id="sound-panel"></div>
+      <button type="button" class="primary-btn" id="btn-resume">▶ RESUME RACE</button>
+      <button type="button" class="secondary-btn" id="btn-pause-restart">🔄 RESTART GRAND PRIX</button>
+    </div>
+  </div>
+
+  <!-- Final Certificate Screen (#screen-end) -->
+  <div id="screen-end">
+    <div class="cert-card">
+      <div class="badge-tag">🏆 CERTIFICATE OF ACHIEVEMENT</div>
+      <h1 style="margin:6px 0;">Grand Prix Champion!</h1>
+      <p style="color:var(--muted); margin:6px 0;">Awarded to</p>
+      <h2 id="cert-student" style="color:#fde047; margin:4px 0;">Racer</h2>
+      <p style="color:var(--muted); font-size:14px; margin:6px 0;">
+        For mastering <strong>Past Simple Tense</strong> in Turbo Kart
+      </p>
+      <div class="cert-score-box" id="cert-score-text">0 / 10</div>
+      <p id="cert-coins-line" style="font-size:14px; color:#cbd5e1; margin:4px 0;">Coins Collected: 0</p>
+      <div class="cert-sig">
+        <div><strong>Teacher:</strong> Ahmad Elhendawy</div>
+        <div><strong>School:</strong> AI4EduTech Academy</div>
+      </div>
+      <a id="btn-whatsapp" class="wa-btn" href="#" target="_blank" rel="noopener">
+        📲 Send My Score on WhatsApp
+      </a>
+      <button type="button" class="secondary-btn" id="btn-print-cert">🖨️ Print Certificate</button>
+      <button type="button" class="primary-btn" id="btn-play-again">🔄 Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- Phaser 3 + AI4EduTech Asset Pack -->
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@baae0827d3b6b021d0438a07480755330663ffd8/ai4-assets.js"></script>
+
+<script>
+(function () {
+  "use strict";
+
+  // Check Phaser availability
+  if (typeof Phaser === "undefined") {
+    document.getElementById("fallback-msg").style.display = "block";
+    return;
+  }
+
+  // Safe AI4Assets wrapper (fallback if offline)
+  const HAS_ASSETS = typeof window.AI4Assets !== "undefined";
+  const SafeAssets = {
+    preload(scene) {
+      if (HAS_ASSETS) {
+        window.AI4Assets.preload(scene, { pack: "kart", music: ["race", "boss"] });
+      }
+    },
+    key(name) {
+      return HAS_ASSETS ? window.AI4Assets.key(name) : "__fallback_" + name;
+    },
+    sfx(scene, name) {
+      if (HAS_ASSETS) try { window.AI4Assets.sfx(scene, name); } catch (e) {}
+    },
+    music(scene, name) {
+      if (HAS_ASSETS) try { window.AI4Assets.music(scene, name); } catch (e) {}
+    },
+    stopMusic() {
+      if (HAS_ASSETS) try { window.AI4Assets.stopMusic(); } catch (e) {}
+    },
+    setMuted(scene, m) {
+      if (HAS_ASSETS) try { window.AI4Assets.setMuted(scene, m); } catch (e) {}
+    },
+    isMuted() {
+      return HAS_ASSETS ? !!window.AI4Assets.isMuted() : false;
+    },
+    label(scene, obj, text, opts) {
+      if (HAS_ASSETS && typeof window.AI4Assets.label === "function") {
+        return window.AI4Assets.label(scene, obj, text, opts);
+      }
+      // Minimal fallback label
+      const el = document.createElement("div");
+      el.textContent = text;
+      el.style.cssText = "position:fixed;z-index:25;background:#0f172a;color:#fff;padding:6px 10px;border-radius:10px;border:2px solid #94a3b8;font-size:14px;font-weight:800;text-align:center;max-width:150px;pointer-events:none;transform:translate(-50%,-100%);";
+      document.body.appendChild(el);
+      const updatePos = () => {
+        const rect = scene.game.canvas.getBoundingClientRect();
+        const sx = rect.width / scene.scale.width;
+        const sy = rect.height / scene.scale.height;
+        el.style.left = (rect.left + obj.x * sx) + "px";
+        el.style.top = (rect.top + (obj.y + (opts && opts.offsetY ? opts.offsetY : -10)) * sy) + "px";
+      };
+      updatePos();
+      const ev = scene.events.on("postupdate", updatePos);
+      return {
+        setHighlight(on, col) {
+          el.style.borderColor = on ? (col || "#f59e0b") : "#94a3b8";
+          el.style.background = on ? (col ? "#14532d" : "#1e293b") : "#0f172a";
+          el.style.transform = on ? "translate(-50%,-100%) scale(1.06)" : "translate(-50%,-100%)";
+        },
+        destroy() {
+          scene.events.off("postupdate", updatePos);
+          el.remove();
+        }
+      };
+    }
+  };
+
+  // Game Config & Curriculum Data
+  const TEACHER_NAME = "Ahmad Elhendawy";
+  const SCHOOL_NAME = "AI4EduTech Academy";
+  const WHATSAPP_DIGITS = "201021612626";
+  const PLAYER_KART_KEY = "kart-red";
+  const RIVAL_KEYS = ["kart-blue", "kart-green", "kart-yellow"];
+
+  const TRACKS = [
+    { name: "Sunny Speedway", bg: 0x1e4620, mid: 0x2d6a30, qCount: 3, theme: "sunny" },
+    { name: "Canyon Drift", bg: 0x6b3a1e, mid: 0x8c4d27, qCount: 3, theme: "canyon" },
+    { name: "Champion Circuit", bg: 0x1e1b4b, mid: 0x312e81, qCount: 4, theme: "night" }
+  ];
+
+  const QUESTIONS = [
+    {
+      q: "Yesterday, Sara ___ to the library after school.",
+      choices: ["went", "go", "going"],
+      correct: 0,
+      exp: "'Go' is an irregular verb, so its Past Simple form is 'went'."
+    },
+    {
+      q: "We ___ a funny movie last Friday night.",
+      choices: ["watched", "watch", "watching"],
+      correct: 0,
+      exp: "Regular verbs like 'watch' add '-ed' in the Past Simple."
+    },
+    {
+      q: "He ___ his homework before dinner.",
+      choices: ["finished", "finishes", "finish"],
+      correct: 0,
+      exp: "Add '-ed' to 'finish' to talk about a completed past action."
+    },
+    {
+      q: "They ___ play football because it rained.",
+      choices: ["didn't", "don't", "wasn't"],
+      correct: 0,
+      exp: "Use 'didn't' + base verb for negative Past Simple sentences."
+    },
+    {
+      q: "___ you visit your grandparents last weekend?",
+      choices: ["Did", "Do", "Were"],
+      correct: 0,
+      exp: "Past Simple questions with action verbs start with 'Did'."
+    },
+    {
+      q: "My brother ___ a delicious pizza yesterday.",
+      choices: ["ate", "eat", "eated"],
+      correct: 0,
+      exp: "'Eat' is irregular; its Past Simple form is 'ate', not 'eated'."
+    },
+    {
+      q: "I ___ very happy when our team won the cup.",
+      choices: ["was", "were", "am"],
+      correct: 0,
+      exp: "With 'I', the Past Simple form of 'be' is 'was'."
+    },
+    {
+      q: "She ___ her keys in the classroom this morning.",
+      choices: ["found", "find", "finded"],
+      correct: 0,
+      exp: "'Find' is irregular; its Past Simple form is 'found'."
+    },
+    {
+      q: "The students ___ quiet during the science test.",
+      choices: ["were", "was", "are"],
+      correct: 0,
+      exp: "Use 'were' with plural subjects like 'the students'."
+    },
+    {
+      q: "Did Omar ___ the race on Saturday?",
+      choices: ["win", "won", "winning"],
+      correct: 0,
+      exp: "After 'Did', always use the base form of the verb ('win')."
+    }
+  ];
+
+  // Shared Game State (no localStorage/cookies)
+  const STATE = {
+    studentName: (window.AI4Game && window.AI4Game.studentName) ? String(window.AI4Game.studentName) : "",
+    trackIndex: 0,
+    qIndex: 0,
+    correctCount: 0,
+    coins: 0,
+    reducedMotion: false,
+    paused: false,
+    hasReportedComplete: false,
+    musicStarted: false
+  };
+
+  // DOM References
+  const dom = {
+    hudTop: document.getElementById("hud-top"),
+    hudTrack: document.getElementById("hud-track"),
+    hudQ: document.getElementById("hud-q"),
+    hudPoints: document.getElementById("hud-points"),
+    hudCoins: document.getElementById("hud-coins"),
+    bossWrap: document.getElementById("boss-bar-wrap"),
+    bossFill: document.getElementById("boss-bar-fill"),
+    qBox: document.getElementById("question-box"),
+    qMeta: document.getElementById("question-meta"),
+    qText: document.getElementById("question-text"),
+    fb: document.getElementById("feedback-banner"),
+    touchBar: document.getElementById("touch-bar"),
+    btnLeft: document.getElementById("btn-left"),
+    btnRight: document.getElementById("btn-right"),
+    btnBoost: document.getElementById("btn-boost"),
+    btnPit: document.getElementById("btn-pit"),
+    btnMute: document.getElementById("btn-mute"),
+    btnMotion: document.getElementById("btn-motion"),
+    btnPause: document.getElementById("btn-pause"),
+    menu: document.getElementById("screen-menu"),
+    nameInput: document.getElementById("student-name-input"),
+    btnStart: document.getElementById("btn-start-game"),
+    map: document.getElementById("screen-map"),
+    mapList: document.getElementById("map-track-list"),
+    btnLaunch: document.getElementById("btn-launch-track"),
+    pauseScreen: document.getElementById("screen-pause"),
+    btnResume: document.getElementById("btn-resume"),
+    btnPauseRestart: document.getElementById("btn-pause-restart"),
+    screenEnd: document.getElementById("screen-end"),
+    certStudent: document.getElementById("cert-student"),
+    certScoreText: document.getElementById("cert-score-text"),
+    certCoinsLine: document.getElementById("cert-coins-line"),
+    btnWhatsapp: document.getElementById("btn-whatsapp"),
+    btnPrint: document.getElementById("btn-print-cert"),
+    btnPlayAgain: document.getElementById("btn-play-again")
+  };
+
+  if (STATE.studentName) {
+    dom.nameInput.value = STATE.studentName;
+  }
+
+  // Sound: remembered mute + music/effects sliders in the pause screen (from the AI4EduTech loader)
+  function syncMuteBtn(m) {
+    dom.btnMute.textContent = m ? "🔇" : "🔊";
+    dom.btnMute.classList.toggle("active-toggle", m);
+  }
+  syncMuteBtn(SafeAssets.isMuted());
+  if (HAS_ASSETS && typeof window.AI4Assets.soundControls === "function") {
+    document.getElementById("sound-panel").appendChild(window.AI4Assets.soundControls({ lang: "en", onChange: syncMuteBtn }));
+  }
+
+  function updateHUD() {
+    dom.hudTrack.textContent = `Track ${STATE.trackIndex + 1}/${TRACKS.length}`;
+    dom.hudQ.textContent = `Q ${Math.min(STATE.qIndex + 1, QUESTIONS.length)}/${QUESTIONS.length}`;
+    dom.hudPoints.textContent = `${STATE.correctCount} / ${QUESTIONS.length}`;
+    dom.hudCoins.textContent = `🪙 ${STATE.coins}`;
+  }
+
+  // Helper: shuffle array indices
+  function shuffledChoices(qObj) {
+    const items = qObj.choices.map((text, idx) => ({
+      text,
+      isCorrect: idx === qObj.correct
+    }));
+    for (let i = items.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  }
+
+  // =========================================================================
+  // SCENE 1: BOOT
+  // =========================================================================
+  class BootScene extends Phaser.Scene {
+    constructor() { super("Boot"); }
+    preload() {
+      SafeAssets.preload(this);
+    }
+    create() {
+      // Generate fallback textures if offline
+      if (!HAS_ASSETS) {
+        this.makeFallbackTextures();
+      }
+      this.scene.start("Menu");
+    }
+    makeFallbackTextures() {
+      const makeRect = (key, w, h, color, border) => {
+        const g = this.make.graphics({ x: 0, y: 0, add: false });
+        g.fillStyle(color, 1);
+        g.fillRoundedRect(0, 0, w, h, 10);
+        if (border) { g.lineStyle(4, border, 1); g.strokeRoundedRect(2, 2, w - 4, h - 4, 10); }
+        g.generateTexture("__fallback_" + key, w, h);
+        g.destroy();
+      };
+      makeRect("kart-red", 60, 80, 0xef4444, 0xffffff);
+      makeRect("kart-blue", 60, 80, 0x3b82f6, 0xffffff);
+      makeRect("kart-green", 60, 80, 0x22c55e, 0xffffff);
+      makeRect("kart-yellow", 60, 80, 0xeab308, 0xffffff);
+      makeRect("boss", 68, 92, 0xf59e0b, 0xfef08a);
+      makeRect("oil", 64, 44, 0x1e293b, 0x475569);
+      makeRect("cone", 40, 44, 0xf97316, 0xffffff);
+      makeRect("tyres", 46, 52, 0x334155, 0x94a3b8);
+      makeRect("coin", 36, 36, 0xfacc15, 0xfef08a);
+      makeRect("star", 40, 40, 0x38bdf8, 0xe0f2fe);
+      makeRect("boost", 50, 46, 0xa855f7, 0xf3e8ff);
+      makeRect("garage", 120, 140, 0x334155, 0x94a3b8);
+    }
+  }
+
+  // =========================================================================
+  // SCENE 2: MENU
+  // =========================================================================
+  class MenuScene extends Phaser.Scene {
+    constructor() { super("Menu"); }
+    create() {
+      this.cameras.main.setBackgroundColor("#0f172a");
+      dom.hudTop.style.display = "none";
+      dom.touchBar.style.display = "none";
+      dom.qBox.style.display = "none";
+      dom.bossWrap.style.display = "none";
+      dom.fb.style.display = "none";
+      dom.map.style.display = "none";
+      dom.pauseScreen.style.display = "none";
+      dom.screenEnd.style.display = "none";
+      dom.menu.style.display = "flex";
+
+      dom.btnStart.onclick = () => {
+        SafeAssets.sfx(this, "tap");
+        if (!STATE.musicStarted) {
+          STATE.musicStarted = true;
+          SafeAssets.music(this, "race");
+        }
+        const typed = dom.nameInput.value.trim();
+        STATE.studentName = typed || (window.AI4Game && window.AI4Game.studentName) || "Champion Racer";
+        dom.menu.style.display = "none";
+        this.scene.start("WorldMap");
+      };
+    }
+  }
+
+  // =========================================================================
+  // SCENE 3: WORLD MAP
+  // =========================================================================
+  class WorldMapScene extends Phaser.Scene {
+    constructor() { super("WorldMap"); }
+    create() {
+      this.cameras.main.setBackgroundColor("#0f172a");
+      dom.hudTop.style.display = "none";
+      dom.touchBar.style.display = "none";
+      dom.qBox.style.display = "none";
+      dom.bossWrap.style.display = "none";
+      dom.fb.style.display = "none";
+      dom.map.style.display = "flex";
+
+      dom.mapList.innerHTML = "";
+      TRACKS.forEach((t, idx) => {
+        const div = document.createElement("div");
+        div.className = "track-item" + (idx === STATE.trackIndex ? " current-track" : idx < STATE.trackIndex ? " cleared-track" : "");
+        const status = idx < STATE.trackIndex ? "✅ Cleared" : idx === STATE.trackIndex ? "🏎️ Next Up" : "🔒 Upcoming";
+        div.innerHTML = `<div><strong>Track ${idx + 1}: ${t.name}</strong><div style="font-size:12px;color:#94a3b8;">${t.qCount} Pit Challenges + Champion Duel</div></div><span style="font-weight:800;font-size:13px;">${status}</span>`;
+        dom.mapList.appendChild(div);
+      });
+
+      dom.btnLaunch.onclick = () => {
+        SafeAssets.sfx(this, "tap");
+        dom.map.style.display = "none";
+        this.scene.start("Play");
+      };
+    }
+  }
+
+  // =========================================================================
+  // SCENE 4: PLAY (TURBO KART)
+  // =========================================================================
+  class PlayScene extends Phaser.Scene {
+    constructor() { super("Play"); }
+
+    create() {
+      const W = this.scale.width;
+      const H = this.scale.height;
+      this.trackCfg = TRACKS[STATE.trackIndex];
+      this.trackQDone = 0;
+      this.trackQTotal = this.trackCfg.qCount;
+      this.phase = "RACE"; // RACE | ENTER_PIT | PIT_CHOICE | RESOLVE | BOSS_VICTORY
+      this.raceTimer = 0;
+      this.raceDuration = 8500; // 8.5s of real racing between questions
+      this.spinTimer = 0;
+      this.boostActive = false;
+      this.selectedGarage = 0;
+      this.committed = false;
+      this.garages = [];
+      this.garageLabels = [];
+      this.choiceItems = [];
+      this.bossLead = 100;
+
+      // Show HUD & Controls
+      dom.hudTop.style.display = "flex";
+      dom.touchBar.style.display = "flex";
+      dom.btnBoost.style.display = "inline-block";
+      dom.btnPit.style.display = "none";
+      dom.qBox.style.display = "none";
+      dom.fb.style.display = "none";
+      dom.bossWrap.style.display = "none";
+      updateHUD();
+
+      // Parallax Layer 1: Far Background
+      this.cameras.main.setBackgroundColor(this.trackCfg.bg);
+
+      // Parallax Layer 2: Scenery props scrolling on sides
+      this.sceneryGroup = this.add.group();
+      for (let i = 0; i < 14; i++) {
+        const side = i % 2 === 0 ? 48 : W - 48;
+        const prop = this.add.circle(side + Phaser.Math.Between(-18, 18), i * 80, Phaser.Math.Between(16, 26), this.trackCfg.mid, 0.85);
+        this.sceneryGroup.add(prop);
+      }
+
+      // Parallax Layer 3: Track Scroller (AI4Assets or fallback)
+      const trackWidth = Math.min(560, W - 20);
+      this.trackLeft = (W - trackWidth * 0.64) / 2;
+      this.trackRight = (W + trackWidth * 0.64) / 2;
+
+      if (HAS_ASSETS && typeof window.AI4Assets.scroller === "function") {
+        this.track = window.AI4Assets.scroller(this, "track-tile", { speed: 400, width: trackWidth });
+      } else {
+        this.track = { speed: 400 };
+        this.add.rectangle(W / 2, H / 2, trackWidth * 0.68, H, 0x334155);
+        this.roadLines = [];
+        for (let y = 0; y < H + 80; y += 80) {
+          this.roadLines.push(this.add.rectangle(W / 2, y, 8, 38, 0xf8fafc, 0.7));
+        }
+      }
+
+      // Groups for hazards, pickups, rivals
+      this.hazards = this.physics.add.group();
+      this.pickups = this.physics.add.group();
+      this.rivals = this.physics.add.group();
+
+      // Player Kart
+      this.player = this.physics.add.sprite(W / 2, H - 150, SafeAssets.key(PLAYER_KART_KEY));
+      this.player.setScale(0.32).setDepth(10);
+      this.player.body.setSize(this.player.width * 0.55, this.player.height * 0.65);
+      this.player.setCollideWorldBounds(true);
+
+      // Boss Kart (hidden until last question of track)
+      this.boss = this.add.sprite(W / 2, -120, SafeAssets.key("boss")).setScale(0.34).setDepth(9).setVisible(false);
+
+      // Glow highlight graphic for Pit Lane
+      this.garageGlow = this.add.graphics().setDepth(5).setVisible(false);
+
+      // Overlaps
+      this.physics.add.overlap(this.player, this.hazards, this.onHitHazard, null, this);
+      this.physics.add.overlap(this.player, this.rivals, this.onHitHazard, null, this);
+      this.physics.add.overlap(this.player, this.pickups, this.onCollectPickup, null, this);
+
+      // Keyboard input
+      this.cursors = this.input.keyboard.createCursorKeys();
+      this.keySpace = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+      this.keyEnter = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+      this.keyA = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
+      this.keyD = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
+      this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
+
+      // Discrete key press listeners for Pit Lane snapping & commit
+      this.input.keyboard.on("keydown-LEFT", () => this.onStepGarage(-1));
+      this.input.keyboard.on("keydown-A", () => this.onStepGarage(-1));
+      this.input.keyboard.on("keydown-RIGHT", () => this.onStepGarage(1));
+      this.input.keyboard.on("keydown-D", () => this.onStepGarage(1));
+      this.input.keyboard.on("keydown-UP", () => this.onCommitKey());
+      this.input.keyboard.on("keydown-W", () => this.onCommitKey());
+      this.input.keyboard.on("keydown-SPACE", () => this.onCommitKey());
+      this.input.keyboard.on("keydown-ENTER", () => this.onCommitKey());
+
+      // Touch button state
+      this.touchState = { left: false, right: false, boost: false };
+      this.bindTouchButtons();
+
+      // Spawn timer for racing objects
+      this.spawnEvent = this.time.addEvent({
+        delay: 950,
+        callback: this.spawnRoadObject,
+        callbackScope: this,
+        loop: true
+      });
+
+      // Music
+      SafeAssets.music(this, "race");
+      this.events.once("shutdown", this.cleanupScene, this);
+    }
+
+    bindTouchButtons() {
+      const bindHold = (btn, prop, stepDir) => {
+        const down = (e) => {
+          e.preventDefault();
+          this.touchState[prop] = true;
+          btn.classList.add("pressed");
+          if (stepDir) this.onStepGarage(stepDir);
+        };
+        const up = (e) => {
+          e.preventDefault();
+          this.touchState[prop] = false;
+          btn.classList.remove("pressed");
+        };
+        btn.onpointerdown = down;
+        btn.onpointerup = up;
+        btn.onpointerleave = up;
+        btn.onpointercancel = up;
+      };
+      bindHold(dom.btnLeft, "left", -1);
+      bindHold(dom.btnRight, "right", 1);
+      bindHold(dom.btnBoost, "boost", 0);
+      dom.btnPit.onclick = (e) => {
+        e.preventDefault();
+        this.onCommitKey();
+      };
+    }
+
+    spawnRoadObject() {
+      if (this.phase !== "RACE" || STATE.paused) return;
+      const x = Phaser.Math.Between(this.trackLeft + 36, this.trackRight - 36);
+      const roll = Math.random();
+      if (roll < 0.44) {
+        const type = Math.random() < 0.7 ? "coin" : (Math.random() < 0.5 ? "star" : "boost");
+        const p = this.pickups.create(x, -40, SafeAssets.key(type));
+        p.setScale(0.36).setDepth(6);
+        p.setData("kind", type);
+      } else if (roll < 0.78) {
+        const hTypes = ["oil", "cone", "tyres"];
+        const type = hTypes[Phaser.Math.Between(0, hTypes.length - 1)];
+        const h = this.hazards.create(x, -50, SafeAssets.key(type));
+        h.setScale(0.34).setDepth(6);
+        h.body.setSize(h.width * 0.6, h.height * 0.6);
+      } else {
+        const rKey = RIVAL_KEYS[Phaser.Math.Between(0, RIVAL_KEYS.length - 1)];
+        const r = this.rivals.create(x, -70, SafeAssets.key(rKey));
+        r.setScale(0.31).setDepth(7);
+        r.body.setSize(r.width * 0.55, r.height * 0.65);
+      }
+    }
+
+    onCollectPickup(player, pickup) {
+      if (this.phase !== "RACE") return;
+      const kind = pickup.getData("kind");
+      pickup.destroy();
+      if (kind === "coin") {
+        STATE.coins += 1;
+        SafeAssets.sfx(this, "coin");
+      } else {
+        STATE.coins += 3;
+        SafeAssets.sfx(this, "power-up");
+      }
+      updateHUD();
+    }
+
+    onHitHazard(player, obj) {
+      if (this.phase !== "RACE" || this.spinTimer > 0) return;
+      obj.destroy();
+      this.spinTimer = 1000; // 1 second spin
+      STATE.coins = Math.max(0, STATE.coins - 3);
+      updateHUD();
+      SafeAssets.sfx(this, "hurt");
+      if (!STATE.reducedMotion) {
+        this.cameras.main.shake(180, 0.008);
+        this.tweens.add({
+          targets: this.player,
+          angle: 360,
+          duration: 600,
+          onComplete: () => { this.player.angle = 0; }
+        });
+      }
+    }
+
+    update(time, delta) {
+      if (STATE.paused) return;
+
+      // Fallback road line scrolling
+      if (this.roadLines) {
+        const dy = (this.track.speed * delta) / 1000;
+        this.roadLines.forEach((l) => {
+          l.y += dy;
+          if (l.y > this.scale.height + 40) l.y -= this.scale.height + 80;
+        });
+      }
+
+      // Scenery parallax
+      const scDy = (this.track.speed * 0.55 * delta) / 1000;
+      this.sceneryGroup.getChildren().forEach((c) => {
+        c.y += scDy;
+        if (c.y > this.scale.height + 40) c.y = -40;
+      });
+
+      if (this.phase === "RACE") {
+        this.updateRacing(delta);
+      }
+    }
+
+    updateRacing(delta) {
+      if (this.spinTimer > 0) {
+        this.spinTimer -= delta;
+        this.track.speed = 180;
+      } else {
+        const boosting = this.cursors.up.isDown || this.keyW.isDown || this.keySpace.isDown || this.touchState.boost;
+        if (boosting && !this.wasBoosting) SafeAssets.sfx(this, "whoosh");
+        this.wasBoosting = boosting;
+        this.track.speed = boosting ? 580 : 400;
+      }
+
+      const steerLeft = this.cursors.left.isDown || this.keyA.isDown || this.touchState.left;
+      const steerRight = this.cursors.right.isDown || this.keyD.isDown || this.touchState.right;
+      const moveSpeed = 320;
+
+      if (steerLeft && !steerRight) {
+        this.player.x -= (moveSpeed * delta) / 1000;
+        if (this.spinTimer <= 0) this.player.angle = -12;
+      } else if (steerRight && !steerLeft) {
+        this.player.x += (moveSpeed * delta) / 1000;
+        if (this.spinTimer <= 0) this.player.angle = 12;
+      } else {
+        if (this.spinTimer <= 0) this.player.angle = 0;
+      }
+      this.player.x = Phaser.Math.Clamp(this.player.x, this.trackLeft + 26, this.trackRight - 26);
+
+      // Move road objects
+      const dy = (this.track.speed * delta) / 1000;
+      const moveGroup = (grp, mult) => {
+        grp.getChildren().forEach((obj) => {
+          obj.y += dy * mult;
+          if (obj.y > this.scale.height + 80) obj.destroy();
+        });
+      };
+      moveGroup(this.hazards, 1.0);
+      moveGroup(this.pickups, 1.0);
+      moveGroup(this.rivals, 0.72);
+
+      // Advance race timer toward Pit Lane
+      this.raceTimer += delta;
+      if (this.raceTimer >= this.raceDuration) {
+        this.enterPitLane();
+      }
+    }
+
+    // =========================================================================
+    // PIT LANE (FAIR-CHOICE ZONE)
+    // =========================================================================
+    enterPitLane() {
+      this.phase = "ENTER_PIT";
+      this.raceTimer = 0;
+      this.spinTimer = 0;
+      this.player.angle = 0;
+
+      // F2: Rivals drive ahead out of view, hazards clear out cleanly
+      this.hazards.clear(true, true);
+      this.pickups.clear(true, true);
+      this.rivals.getChildren().forEach((r) => {
+        this.tweens.add({ targets: r, y: -120, duration: 450, onComplete: () => r.destroy() });
+      });
+
+      // Check if Boss Duel is active (last question of track)
+      const isBossQ = (this.trackQDone === this.trackQTotal - 1);
+      if (isBossQ) {
+        dom.bossWrap.style.display = "block";
+        dom.bossFill.style.width = this.bossLead + "%";
+        this.boss.setVisible(true).setPosition(this.scale.width / 2, 190);
+        SafeAssets.music(this, "boss");
+      }
+
+      // Slow track to a safe stop
+      this.tweens.add({
+        targets: this.track,
+        speed: 0,
+        duration: 500,
+        onComplete: () => this.showPitGarages()
+      });
+    }
+
+    showPitGarages() {
+      this.phase = "PIT_CHOICE";
+      this.committed = false;
+      const qObj = QUESTIONS[STATE.qIndex];
+      this.choiceItems = shuffledChoices(qObj);
+
+      const W = this.scale.width;
+      const H = this.scale.height;
+      const count = this.choiceItems.length; // 3 garages
+      const garageY = Math.max(300, Math.min(H * 0.50, 380));
+      const span = Math.min(W - 110, 480);
+      const startX = (W - span) / 2;
+      const stepX = count > 1 ? span / (count - 1) : 0;
+
+      this.clearGarages();
+
+      for (let i = 0; i < count; i++) {
+        const gx = startX + i * stepX;
+        const g = this.add.sprite(gx, garageY, SafeAssets.key("garage"))
+          .setScale(0.46)
+          .setOrigin(0.5, 1)
+          .setDepth(6)
+          .setInteractive({ useHandCursor: true });
+
+        // Accessibility (F4): tapping/clicking a garage moves kart there & commits
+        g.on("pointerdown", () => {
+          if (this.phase !== "PIT_CHOICE" || this.committed) return;
+          this.selectedGarage = i;
+          this.snapKartToGarage(true);
+        });
+
+        const tag = SafeAssets.label(this, g, this.choiceItems[i].text, { offsetY: -125 });
+        this.garages.push(g);
+        this.garageLabels.push(tag);
+      }
+
+      // Place kart in front of garage 0 (never between garages)
+      this.selectedGarage = 0;
+      this.player.y = garageY + 76;
+      this.snapKartToGarage(false);
+
+      // Show Question Panel & PIT button
+      dom.qMeta.textContent = `PIT LANE • QUESTION ${STATE.qIndex + 1} OF ${QUESTIONS.length}`;
+      dom.qText.textContent = qObj.q;
+      dom.qBox.style.display = "block";
+      dom.btnBoost.style.display = "none";
+      dom.btnPit.style.display = "inline-block";
+      SafeAssets.sfx(this, "go");
+    }
+
+    onStepGarage(dir) {
+      if (this.phase !== "PIT_CHOICE" || this.committed || STATE.paused) return;
+      const next = Phaser.Math.Clamp(this.selectedGarage + dir, 0, this.garages.length - 1);
+      if (next !== this.selectedGarage) {
+        this.selectedGarage = next;
+        SafeAssets.sfx(this, "select");
+        this.snapKartToGarage(false);
+      }
+    }
+
+    snapKartToGarage(andCommit) {
+      const target = this.garages[this.selectedGarage];
+      if (!target) return;
+
+      // Update highlights
+      this.garageLabels.forEach((lbl, idx) => lbl.setHighlight(idx === this.selectedGarage));
+      this.drawGarageGlow(target.x, target.y, 0xf59e0b);
+
+      this.tweens.add({
+        targets: this.player,
+        x: target.x,
+        duration: 140,
+        ease: "Sine.easeOut",
+        onComplete: () => {
+          if (andCommit) this.commitAnswer();
+        }
+      });
+    }
+
+    drawGarageGlow(x, y, color) {
+      this.garageGlow.clear();
+      this.garageGlow.lineStyle(5, color, 0.95);
+      this.garageGlow.strokeRoundedRect(x - 58, y - 142, 116, 146, 14);
+      this.garageGlow.setVisible(true);
+    }
+
+    onCommitKey() {
+      if (this.phase !== "PIT_CHOICE" || this.committed || STATE.paused) return;
+      this.commitAnswer();
+    }
+
+    // F5 & F6: Decide first, lock immediately, then animate
+    commitAnswer() {
+      if (this.committed || this.phase !== "PIT_CHOICE") return;
+      this.committed = true;
+      this.phase = "RESOLVE";
+      dom.btnPit.style.display = "none";
+
+      const chosenIndex = this.selectedGarage;
+      const chosen = this.choiceItems[chosenIndex];
+      const qObj = QUESTIONS[STATE.qIndex];
+      const isRight = !!chosen.isCorrect;
+
+      // Update score (first commit only) & Platform Progress Hook
+      if (isRight) {
+        STATE.correctCount += 1;
+        STATE.coins += 5;
+      }
+      updateHUD();
+      if (window.AI4Game && typeof window.AI4Game.reportProgress === "function") {
+        window.AI4Game.reportProgress(STATE.correctCount, QUESTIONS.length);
+      }
+
+      SafeAssets.sfx(this, "commit");
+      const targetGarage = this.garages[chosenIndex];
+
+      // Roll kart into the chosen garage
+      this.tweens.add({
+        targets: this.player,
+        y: targetGarage.y - 36,
+        duration: 320,
+        ease: "Power2",
+        onComplete: () => {
+          if (isRight) {
+            this.handleCorrect(qObj);
+          } else {
+            this.handleWrong(qObj);
+          }
+        }
+      });
+    }
+
+    handleCorrect(qObj) {
+      SafeAssets.sfx(this, "correct");
+      this.drawGarageGlow(this.garages[this.selectedGarage].x, this.garages[this.selectedGarage].y, 0x22c55e);
+
+      // Cut Boss lead bar
+      this.bossLead = Math.max(0, this.bossLead - 35);
+      dom.bossFill.style.width = this.bossLead + "%";
+      if (this.boss.visible) SafeAssets.sfx(this, "boss-hit");
+
+      dom.fb.className = "feedback-ok";
+      dom.fb.textContent = `🔥 TURBO BOOST! ${qObj.exp}`;
+      dom.fb.style.display = "block";
+
+      // Blast out with flames/confetti effect
+      if (!STATE.reducedMotion) {
+        this.cameras.main.flash(200, 34, 197, 94);
+      }
+      this.tweens.add({
+        targets: this.player,
+        y: this.scale.height - 150,
+        duration: 450,
+        ease: "Back.easeOut"
+      });
+
+      this.time.delayedCall(2200, () => this.finishQuestion());
+    }
+
+    handleWrong(qObj) {
+      SafeAssets.sfx(this, "wrong");
+      if (!STATE.reducedMotion) {
+        this.cameras.main.shake(220, 0.008);
+      }
+
+      // F7: Highlight the CORRECT garage in green & keep explanation >= 3s
+      const rightIdx = this.choiceItems.findIndex((c) => c.isCorrect);
+      this.garageLabels.forEach((lbl, idx) => {
+        if (idx === rightIdx) lbl.setHighlight(true, "#86efac");
+        else lbl.setHighlight(false);
+      });
+      if (this.garages[rightIdx]) {
+        this.drawGarageGlow(this.garages[rightIdx].x, this.garages[rightIdx].y, 0x86efac);
+      }
+
+      dom.fb.className = "feedback-no";
+      dom.fb.textContent = `💨 Pit Crew Tip: ${qObj.exp}`;
+      dom.fb.style.display = "block";
+
+      this.tweens.add({
+        targets: this.player,
+        y: this.scale.height - 150,
+        duration: 450
+      });
+
+      this.time.delayedCall(3500, () => this.finishQuestion());
+    }
+
+    finishQuestion() {
+      this.clearGarages();
+      dom.qBox.style.display = "none";
+      dom.fb.style.display = "none";
+
+      STATE.qIndex += 1;
+      this.trackQDone += 1;
+      updateHUD();
+
+      if (this.trackQDone >= this.trackQTotal) {
+        // F10: Always finish the boss with a victory moment after track's last question
+        this.phase = "BOSS_VICTORY";
+        dom.bossFill.style.width = "0%";
+        SafeAssets.sfx(this, "level-up");
+        if (this.boss.visible) {
+          this.tweens.add({ targets: this.boss, y: -140, angle: 360, duration: 700 });
+        }
+        dom.fb.className = "feedback-ok";
+        dom.fb.textContent = `🏆 ${this.trackCfg.name} Cleared! Champion Racer Defeated!`;
+        dom.fb.style.display = "block";
+
+        this.time.delayedCall(1800, () => {
+          dom.fb.style.display = "none";
+          dom.bossWrap.style.display = "none";
+          STATE.trackIndex += 1;
+          if (STATE.trackIndex >= TRACKS.length || STATE.qIndex >= QUESTIONS.length) {
+            this.scene.start("Result");
+          } else {
+            this.scene.start("WorldMap");
+          }
+        });
+      } else {
+        // Rejoin race
+        this.phase = "RACE";
+        dom.btnBoost.style.display = "inline-block";
+        this.track.speed = 400;
+      }
+    }
+
+    clearGarages() {
+      this.garageGlow.setVisible(false);
+      this.garages.forEach((g) => g.destroy());
+      this.garages = [];
+      this.garageLabels.forEach((l) => l.destroy());
+      this.garageLabels = [];
+    }
+
+    cleanupScene() {
+      this.clearGarages();
+      if (this.spawnEvent) this.spawnEvent.remove(false);
+    }
+  }
+
+  // =========================================================================
+  // SCENE 5: RESULT (CERTIFICATE & PLATFORM HOOKS)
+  // =========================================================================
+  class ResultScene extends Phaser.Scene {
+    constructor() { super("Result"); }
+    create() {
+      this.cameras.main.setBackgroundColor("#0f172a");
+      dom.hudTop.style.display = "none";
+      dom.touchBar.style.display = "none";
+      dom.qBox.style.display = "none";
+      dom.bossWrap.style.display = "none";
+      dom.fb.style.display = "none";
+
+      SafeAssets.stopMusic();
+      SafeAssets.sfx(this, "victory");
+
+      const scoreStr = `${STATE.correctCount} / ${QUESTIONS.length}`;
+      dom.certStudent.textContent = STATE.studentName || "Champion Racer";
+      dom.certScoreText.textContent = scoreStr;
+      dom.certCoinsLine.textContent = `Coins Collected: 🪙 ${STATE.coins}`;
+
+      const msg = `Hello ${TEACHER_NAME}! Student ${STATE.studentName} finished Turbo Kart (Past Simple Grand Prix) at ${SCHOOL_NAME} with a score of ${scoreStr}.`;
+      dom.btnWhatsapp.href = `https://wa.me/${WHATSAPP_DIGITS}?text=${encodeURIComponent(msg)}`;
+
+      dom.screenEnd.style.display = "flex";
+
+      // Hook (e): Call reportComplete EXACTLY ONCE per session
+      if (!STATE.hasReportedComplete) {
+        STATE.hasReportedComplete = true;
+        if (window.AI4Game && typeof window.AI4Game.reportComplete === "function") {
+          window.AI4Game.reportComplete(STATE.correctCount, QUESTIONS.length);
+        }
+      }
+
+      dom.btnPrint.onclick = () => window.print();
+      dom.btnPlayAgain.onclick = () => restartFullGame(this);
+    }
+  }
+
+  // =========================================================================
+  // GLOBAL CONTROLS (MUTE, PAUSE, MOTION, VISIBILITY, RESTART)
+  // =========================================================================
+  let gameInstance = null;
+
+  function restartFullGame(sceneRef) {
+    STATE.trackIndex = 0;
+    STATE.qIndex = 0;
+    STATE.correctCount = 0;
+    STATE.coins = 0;
+    STATE.paused = false;
+    dom.screenEnd.style.display = "none";
+    dom.pauseScreen.style.display = "none";
+    updateHUD();
+    const s = sceneRef || gameInstance.scene.getScenes(true)[0];
+    if (s) s.scene.start("WorldMap");
+  }
+
+  dom.btnMute.onclick = () => {
+    const active = gameInstance.scene.getScenes(true)[0];
+    const nextMuted = !SafeAssets.isMuted();
+    SafeAssets.setMuted(active, nextMuted);
+    syncMuteBtn(nextMuted);
+  };
+
+  dom.btnMotion.onclick = () => {
+    STATE.reducedMotion = !STATE.reducedMotion;
+    dom.btnMotion.classList.toggle("active-toggle", STATE.reducedMotion);
+  };
+
+  function togglePause(forcePause) {
+    const play = gameInstance && gameInstance.scene.getScene("Play");
+    if (!play || !play.scene.isActive()) return;
+    STATE.paused = typeof forcePause === "boolean" ? forcePause : !STATE.paused;
+    dom.pauseScreen.style.display = STATE.paused ? "flex" : "none";
+    if (STATE.paused) play.physics.world.pause();
+    else play.physics.world.resume();
+  }
+
+  dom.btnPause.onclick = () => togglePause();
+  dom.btnResume.onclick = () => togglePause(false);
+  dom.btnPauseRestart.onclick = () => restartFullGame();
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) togglePause(true);
+  });
+
+  // Boot Phaser
+  gameInstance = new Phaser.Game({
+    type: Phaser.AUTO,
+    parent: "phaser-root",
+    width: 600,
+    height: 820,
+    backgroundColor: "#0f172a",
+    scale: {
+      mode: Phaser.Scale.FIT,
+      autoCenter: Phaser.Scale.CENTER_BOTH
+    },
+    physics: {
+      default: "arcade",
+      arcade: {
+        fixedStep: true,
+        debug: false
+      }
+    },
+    scene: [BootScene, MenuScene, WorldMapScene, PlayScene, ResultScene]
+  });
+})();
+</script>
+</body>
+</html>
