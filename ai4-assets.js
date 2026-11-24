@@ -424,12 +424,15 @@
       var view = cam.worldView, off = b.right < view.x || b.left > view.right || !obj.visible;
       el.style.display = off ? 'none' : '';
       if (off) return;
-      var x = (b.centerX - cam.scrollX) * sx + (r.left - hr.left), y = (b.top + dy - cam.scrollY) * sy + (r.top - hr.top);
-      x = Math.max(el.offsetWidth / 2 + 4, Math.min(r.width - el.offsetWidth / 2 - 4, x));
-      el.style.left = x + 'px'; el.style.top = Math.max(el.offsetHeight + 4, y) + 'px';
+      /* ox/oy: where the canvas sits inside its host (it is centred, so on wide or tall screens it has side or top bands).
+         Clamping must use the canvas edges, not the host's, or every label gets pushed to the same spot. */
+      var ox = r.left - hr.left, oy = r.top - hr.top, w = el.offsetWidth, h = el.offsetHeight;
+      var x = (b.centerX - cam.scrollX) * sx + ox, y = (b.top + dy - cam.scrollY) * sy + oy;
+      x = Math.max(ox + w / 2 + 4, Math.min(ox + r.width - w / 2 - 4, x));
+      el.style.left = x + 'px'; el.style.top = Math.max(oy + h + 4, Math.min(oy + r.height - 4, y)) + 'px';
       if (overlapsHud(el.getBoundingClientRect())) {
-        var below = ((b.bottom != null ? b.bottom : obj.y) - cam.scrollY) * sy + (r.top - hr.top) + el.offsetHeight + 8;
-        el.style.top = Math.min(r.height - 4, below) + 'px';
+        var below = ((b.bottom != null ? b.bottom : obj.y) - cam.scrollY) * sy + oy + h + 8;
+        el.style.top = Math.min(oy + r.height - 4, below) + 'px';
       }
     }
     scene.events.on('postupdate', place);
