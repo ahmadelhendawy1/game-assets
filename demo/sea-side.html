@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Sea Voyage side view - wave engine demo</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0b2540; color: #fff; font: 600 15px/1.4 system-ui, "Segoe UI", Tahoma, sans-serif; overflow: hidden; }
+  #game { position: absolute; inset: 0; }
+  #hud { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(8,30,60,.88); border: 2px solid #fcd34d; border-radius: 16px; padding: 8px 18px; text-align: center; max-width: 92vw; }
+  #hud b { color: #fcd34d; }
+  #touch { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 10; display: flex; justify-content: space-between; padding: 0 14px; pointer-events: none; }
+  #touch div { display: flex; gap: 10px; }
+  #touch button { pointer-events: auto; width: 64px; height: 64px; border-radius: 50%; border: 3px solid #fff; background: rgba(29,78,216,.75); color: #fff; font: 900 18px system-ui; touch-action: none; }
+  #touch button.sail { width: 100px; border-radius: 32px; background: rgba(234,88,12,.9); }
+</style>
+</head>
+<body>
+<div id="game"></div>
+<div id="hud" data-hud>Sail right with <b>← →</b>, hop over rocks with <b>↑</b>. Coins: <b id="coins">0</b></div>
+<div id="touch"><div><button id="tl">◀</button><button id="tr">▶</button></div><div><button id="tu">▲</button><button id="ts" class="sail">SAIL</button></div></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@main/ai4-assets.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (!window.Phaser || !window.AI4Assets) { document.getElementById('hud').textContent = 'Could not load the game engine. Check the internet connection and refresh.'; return; }
+  var A = AI4Assets, K = A.key, LEVEL_W = 5200, input = {};
+  ['tl:left', 'tr:right', 'tu:up', 'ts:sail'].forEach(function (p) {
+    var id = p.split(':')[0], k = p.split(':')[1], b = document.getElementById(id);
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); input[k] = true; });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { b.addEventListener(ev, function () { input[k] = false; }); });
+  });
+
+  var Play = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function () { Phaser.Scene.call(this, 'play'); },
+    preload: function () { A.preload(this, { pack: ['runner-desert', 'sea'], music: ['sea', 'boss'] }); },
+    create: function () {
+      var s = this, coins = 0, hud = document.getElementById('hud');
+      s.cameras.main.setBounds(0, 0, LEVEL_W, 720);
+      var bg = A.parallax(s, { farFactor: 0.08 });                  // sky, mountains, city on the coast
+      var sea = A.sea(s, { level: 520, amplitude: 16 });
+
+      var boat = s.add.image(200, 500, K('boat-side')).setOrigin(0.5, 0.95).setScale(0.8).setDepth(30);
+      sea.float(boat, { sink: 14, tilt: 1 });
+      var hop = 0, hopV = 0, vx = 0;
+
+      // things floating on the waves
+      var rocks = [900, 1600, 2300].map(function (x) { return sea.float(s.add.image(x, 0, K('rocks')).setOrigin(0.5, 0.75).setScale(0.6).setDepth(25), { sink: 6, tilt: 0 }); });
+      var coinList = [];
+      for (var x = 500; x < 2800; x += 170) coinList.push(sea.float(s.add.image(x, 0, K('coin')).setScale(0.42).setDepth(26), { sink: -70 - (x % 340 ? 0 : 40), tilt: 0.3 }));
+      var shark = sea.float(s.add.image(1900, 0, K('shark')).setScale(0.7).setDepth(26), { sink: -6, tilt: 0.6 });
+      var fishT = 0;
+
+      // choice zone: 4 buoys in ONE row, wide gaps
+      var ZONE = 3300, answers = ['went', 'goes', 'go', 'going'], correct = 0, buoys = [], asked = false, done = false, near = -1;
+      Phaser.Utils.Array.Shuffle([0, 1, 2, 3]).forEach(function (ai, i) {
+        var b = s.add.image(ZONE + 250 + i * 260, 0, K('buoy')).setOrigin(0.5, 0.8).setScale(0.75).setDepth(25);
+        b.setData('a', ai); sea.float(b, { sink: 8, tilt: 0.8 }); buoys.push(b);
+      });
+      var monster = s.add.image(ZONE + 1500, 0, K('boss')).setOrigin(0.5, 0.75).setScale(0.55).setDepth(24);
+      sea.float(monster, { sink: 40, tilt: 0.4 });
+
+      s.cameras.main.startFollow(boat, true, 0.1, 0.05, -160, 160);
+      var keys = s.input.keyboard.addKeys('LEFT,RIGHT,UP,SPACE,ENTER,A,D,W');
+      var music = false; function startMusic() { if (!music) { music = true; A.music(s, 'sea'); } }
+      s.input.on('pointerdown', startMusic); s.input.keyboard.on('keydown', startMusic);
+      var hurtUntil = 0;
+
+      s.events.on('update', function (time, delta) {
+        var dt = delta / 1000;
+        var L = keys.LEFT.isDown || keys.A.isDown || input.left, R = keys.RIGHT.isDown || keys.D.isDown || input.right;
+        var U = Phaser.Input.Keyboard.JustDown(keys.UP) || Phaser.Input.Keyboard.JustDown(keys.W) || (input.up && !input._u); input._u = input.up;
+        var S = Phaser.Input.Keyboard.JustDown(keys.SPACE) || Phaser.Input.Keyboard.JustDown(keys.ENTER) || (input.sail && !input._s); input._s = input.sail;
+        var target = time < hurtUntil ? 0 : (R ? 260 : L ? -200 : 40);
+        if (asked && !done) target = R ? 200 : L ? -200 : 0;
+        vx += (target - vx) * Math.min(1, dt * 3);
+        boat.x = Phaser.Math.Clamp(boat.x + vx * dt, 120, LEVEL_W - 200);
+        if (asked && !done) boat.x = Phaser.Math.Clamp(boat.x, ZONE + 120, ZONE + 250 + 3 * 260 + 60);
+        boat.setFlipX(vx < -20);
+        // hop over rocks (a jump on top of the floating motion)
+        if (U && hop === 0 && !asked) { hopV = -520; A.sfx(s, 'jump'); sea.splash(boat.x, 0.7); }
+        if (hop < 0 || hopV < 0) { hopV += 1500 * dt; hop = Math.min(0, hop + hopV * dt); if (hop === 0) { hopV = 0; sea.splash(boat.x, 1); A.sfx(s, 'splash'); } }
+        boat.y += hop;
+        // collect coins
+        coinList.forEach(function (c) { if (c.active && Math.abs(c.x - boat.x) < 60 && Math.abs(c.y - (boat.y - 90)) < 90) { c.destroy(); coins++; document.getElementById('coins').textContent = coins; A.sfx(s, 'coin'); } });
+        // rocks and shark only cost coins (game skill never touches the score)
+        rocks.concat([shark]).forEach(function (r) {
+          if (time > hurtUntil + 1200 && Math.abs(r.x - boat.x) < 70 && hop > -40) {   // pass through for a while after a hit: never stuck
+            hurtUntil = time + 500; vx = -90; coins = Math.max(0, coins - 2); document.getElementById('coins').textContent = coins;
+            A.sfx(s, 'hurt'); s.cameras.main.shake(160, 0.006); sea.splash(boat.x + 40, 1.2);
+          }
+        });
+        shark.x = 1900 + Math.sin(time / 1400) * 220; shark.setFlipX(Math.cos(time / 1400) > 0);
+        // jumping fish, for life
+        fishT -= dt; if (fishT <= 0) { fishT = 1.2 + Math.random(); var fx = s.cameras.main.scrollX + 200 + Math.random() * 900, f = s.add.image(fx, sea.surfaceY(fx), K('fish')).setScale(0.45).setDepth(20);
+          sea.splash(fx, 0.5); s.tweens.add({ targets: f, x: fx + 160, duration: 900 }); s.tweens.add({ targets: f, y: f.y - 150, angle: 40, duration: 450, yoyo: true, ease: 'Quad.out', onComplete: function () { sea.splash(f.x, 0.5); f.destroy(); } }); }
+        // choice zone
+        if (!asked && boat.x > ZONE) {
+          asked = true; sea.setCalm(true); A.sfx(s, 'go'); vx = 0;
+          hud.innerHTML = 'Yesterday, I ___ to the park with my friends.<br><small>Steer to a buoy, then press <b>SAIL</b> (Space / Enter) or tap the buoy.</small>';
+          buoys.forEach(function (b) { b.lbl = A.label(s, b, answers[b.getData('a')], { offsetY: -8, size: 20 }); });
+        }
+        if (asked && !done) {
+          var idx = -1; buoys.forEach(function (b, i) { if (Math.abs(boat.x - b.x) < 80) idx = i; });
+          if (idx !== near) { if (near >= 0) buoys[near].lbl.setHighlight(false); if (idx >= 0) { buoys[idx].lbl.setHighlight(true); A.sfx(s, 'select'); } near = idx; }
+          if (S && idx >= 0) commit(idx);
+        }
+      });
+      buoys.forEach(function (b, i) { b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) commit(i); }); });
+
+      function commit(i) {
+        done = true; A.sfx(s, 'commit');
+        var b = buoys[i], right = b.getData('a') === correct;
+        s.time.delayedCall(250, function () {
+          if (right) {
+            A.sfx(s, 'correct'); sea.splash(b.x, 1.6); b.lbl.setHighlight(true, '#86efac');
+            hud.innerHTML = '<b>Correct!</b> "went" is the past of "go".';
+            s.tweens.add({ targets: s.cameras.main, zoom: 1.06, duration: 200, yoyo: true });
+            s.time.delayedCall(900, function () { sea.setCalm(false); A.music(s, 'boss'); A.sfx(s, 'boss-hit'); s.cameras.main.flash(200); });
+          } else {
+            A.sfx(s, 'wrong'); s.cameras.main.shake(220, 0.01); sea.splash(boat.x, 1.4);
+            buoys.forEach(function (x) { if (x.getData('a') === correct) x.lbl.setHighlight(true, '#86efac'); });
+            hud.innerHTML = 'Not quite. <b>"went"</b>: "yesterday" needs the past simple.';
+            s.time.delayedCall(1800, function () { sea.setCalm(false); });
+          }
+        });
+      }
+      window.__sea = { scene: s, boat: boat, sea: sea, buoys: buoys };
+    }
+  });
+  window.__game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: 1280, height: 720, backgroundColor: '#8ecbf5',
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: [Play] });
+})();
+</script>
+</body>
+</html>

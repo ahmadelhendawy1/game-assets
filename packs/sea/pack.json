@@ -17,6 +17,7 @@
   "island-1": "img/island-1.webp",
   "island-2": "img/island-2.webp",
   "island-3": "img/island-3.webp",
+  "boat-side": "img/boat-side.webp",
   "boss": "img/boss.webp"
  },
  "sizes": {
@@ -75,6 +76,10 @@
   "island-3": [
    360,
    330
+  ],
+  "boat-side": [
+   300,
+   260
   ],
   "boss": [
    540,

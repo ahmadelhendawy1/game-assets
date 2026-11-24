@@ -71,6 +71,22 @@ STYLE LOCK: Bright, friendly 2D cartoon game art for children 7–14. Clean bold
 
 ---
 
+### Sea Voyage, side-view upgrade (optional, side-view lock)
+
+Sea Voyage is now a side-view game with animated waves drawn in code. These images replace the interim code-drawn boat:
+```
+S1) SIDE BOATS: Three separate small boats in side view facing right, sitting on an invisible waterline (flat hull bottom, no water drawn): a red-and-white sailboat with a white sail, a blue fishing boat with a small cabin, and a wooden pirate ship with a black sail. Spaced apart. Transparent background. 1536x1024.
+```
+```
+S2) COAST: Middle parallax layer: a sunny Mediterranean coast with a small white lighthouse, palm trees and low sandstone houses along the bottom 45% of the image; the top is fully transparent. Must tile seamlessly left-to-right. 1536x1024.
+```
+```
+S3) SEA MONSTER SIDE: The same purple sea monster, side view facing left, rising out of the water from the waist up (flat cut at the bottom, no water drawn), tentacles raised, glowing yellow eyes, friendly-scary. Transparent background. 1024x1024.
+```
+```
+S4) SEA LIFE: Separate objects in side view, transparent background, spaced apart: a seagull flying, a dolphin jumping, a floating wooden barrel, a treasure chest bobbing, a cannonball. 1536x1024.
+```
+
 ## Space Defender (`space`), top-down lock
 
 ```

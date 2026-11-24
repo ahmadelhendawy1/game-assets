@@ -59,6 +59,7 @@ p.add('sea-tile', fit(wrap_blend(wrap_blend(SRC('sea/01-sea-tile.png'), 'x'), 'y
 for i, n in enumerate(['boat-pirate', 'boat-sail', 'boat-fishing']): p.add(n, fit(C(f'sea/02-boats/{i}.png'), 300))
 for i, (n, m) in enumerate([('buoy', 200), ('whirlpool', 240), ('rocks', 220), ('rope', 1200), ('shark', 170), ('fish', 120), ('coin', 110)]): p.add(n, fit(C(f'sea/03-sea-objects/{i}.png'), m))
 for i in range(3): p.add(f'island-{i + 1}', fit(C(f'sea/04-islands/{i}.png'), 360))
+p.add('boat-side', Image.open('gen/boat-side.png').convert('RGBA'))   # side-view sailboat drawn in code (interim)
 p.add('boss', fit(C('sea/05-sea-boss/0.png'), 540)); p.save()
 
 # ── SPACE ── (the ringed planet touches its neighbour: split at the emptiest column)
