@@ -137,7 +137,7 @@ window.AI4_TEMPLATE = 'sea';
       var SPEED = 260, SEG = 3000, X0 = 1400;
       var zoneX = QS.map(function (q, i) { return X0 + i * SEG; });
       var BOSS_X = X0 + n * SEG + 600, LEVEL_W = BOSS_X + 900;
-      var qi = -1, asked = false, done = false, near = -1, buoys = [], ended = false, worldScore = 0, sel = 0, wantCommit = false;
+      var qi = -1, asked = false, done = false, near = -1, buoys = [], ended = false, worldScore = 0, sel = 0, wantCommit = false, armedAt = 0;
       hudPills(wi); msg(esc(T.move), 4000);
       s.cameras.main.setBounds(0, 0, LEVEL_W, 720);
       var bg = A.parallax(s, { farFactor: 0.08 });
@@ -176,11 +176,11 @@ window.AI4_TEMPLATE = 'sea';
         buoys = order.map(function (ci, k) {
           var b = s.add.image(start + k * gap, 0, K('buoy')).setOrigin(0.5, 0.8).setScale(0.75).setDepth(25);
           b.setData('c', ci); sea.float(b, { sink: 8, tilt: 0.8 });
-          b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) { sel = k; wantCommit = true; } });
+          b.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !done) { if (s.time.now < armedAt) return; sel = k; wantCommit = true; } });
           b.lbl = A.label(s, b, Q.choices[ci], { offsetY: -8, size: 20, maxWidth: 230 });
           return b;
         });
-        sel = 0; wantCommit = false;
+        sel = 0; wantCommit = false; armedAt = s.time.now + 700;   // answers count only from a fresh press after the buoys are on screen
         var cam = s.cameras.main; cam.stopFollow();
         cam.pan(start + (buoys.length - 1) * gap / 2, 360, REDUCED ? 0 : 700, 'Sine.easeInOut');   // every buoy fully on screen
         $('g-qn').textContent = T.q + ' ' + (G.answered + 1) + ' ' + T.of + ' ' + TOTAL;
@@ -279,7 +279,7 @@ window.AI4_TEMPLATE = 'sea';
         if (!asked && !ended && qi + 1 === n && boat.x > BOSS_X - 500) bossFight();
         if (asked && !done) {
           if (sel !== near) { if (near >= 0 && buoys[near]) buoys[near].lbl.setHighlight(false); buoys[sel].lbl.setHighlight(true); if (near >= 0) A.sfx(s, 'select'); near = sel; }
-          if (S) wantCommit = true;
+          if (S && s.time.now >= armedAt) wantCommit = true;
           if (wantCommit && Math.abs(boat.x - buoys[sel].x) < 6) commit(sel);        // commit the highlighted buoy once the boat is there
         }
       }

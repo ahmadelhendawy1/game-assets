@@ -319,7 +319,9 @@
 
 <!-- Phaser 3 + AI4EduTech Asset Pack -->
 <script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
-<script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@baae0827d3b6b021d0438a07480755330663ffd8/ai4-assets.js"></script>
+<script>window.Phaser||document.write('<script src="https://fastly.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"><\/script>')</script>
+<script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@3a8c0fa97cdbe0d229bf834b2e5442134c8c94c5/ai4-assets.js"></script>
+<script>window.AI4Assets||document.write('<script src="https://fastly.jsdelivr.net/gh/ahmadelhendawy1/game-assets@3a8c0fa97cdbe0d229bf834b2e5442134c8c94c5/ai4-assets.js"><\/script>')</script>
 
 <script>
 (function () {
@@ -744,14 +746,16 @@
       this.keyW = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W);
 
       // Discrete key press listeners for Pit Lane snapping & commit
-      this.input.keyboard.on("keydown-LEFT", () => this.onStepGarage(-1));
-      this.input.keyboard.on("keydown-A", () => this.onStepGarage(-1));
-      this.input.keyboard.on("keydown-RIGHT", () => this.onStepGarage(1));
-      this.input.keyboard.on("keydown-D", () => this.onStepGarage(1));
-      this.input.keyboard.on("keydown-UP", () => this.onCommitKey());
-      this.input.keyboard.on("keydown-W", () => this.onCommitKey());
-      this.input.keyboard.on("keydown-SPACE", () => this.onCommitKey());
-      this.input.keyboard.on("keydown-ENTER", () => this.onCommitKey());
+      // Fair choice: Up/W/Space also BOOST during the race, so a key that is still held (keyboard auto-repeat)
+      // must never pick a garage. Only a fresh press counts, and only once the garages have been on screen 0.7 s.
+      this.input.keyboard.on("keydown-LEFT", (e) => { if (!e.repeat) this.onStepGarage(-1); });
+      this.input.keyboard.on("keydown-A", (e) => { if (!e.repeat) this.onStepGarage(-1); });
+      this.input.keyboard.on("keydown-RIGHT", (e) => { if (!e.repeat) this.onStepGarage(1); });
+      this.input.keyboard.on("keydown-D", (e) => { if (!e.repeat) this.onStepGarage(1); });
+      this.input.keyboard.on("keydown-UP", (e) => this.onCommitKey(e));
+      this.input.keyboard.on("keydown-W", (e) => this.onCommitKey(e));
+      this.input.keyboard.on("keydown-SPACE", (e) => this.onCommitKey(e));
+      this.input.keyboard.on("keydown-ENTER", (e) => this.onCommitKey(e));
 
       // Touch button state
       this.touchState = { left: false, right: false, boost: false };
@@ -793,7 +797,7 @@
       bindHold(dom.btnBoost, "boost", 0);
       dom.btnPit.onclick = (e) => {
         e.preventDefault();
-        this.onCommitKey();
+        this.onCommitKey(null);
       };
     }
 
@@ -981,7 +985,7 @@
 
         // Accessibility (F4): tapping/clicking a garage moves kart there & commits
         g.on("pointerdown", () => {
-          if (this.phase !== "PIT_CHOICE" || this.committed) return;
+          if (this.phase !== "PIT_CHOICE" || this.committed || !this.pitArmed()) return;
           this.selectedGarage = i;
           this.snapKartToGarage(true);
         });
@@ -991,6 +995,7 @@
         this.garageLabels.push(tag);
       }
 
+      this.pitOpenedAt = this.time.now;
       // Place kart in front of garage 0 (never between garages)
       this.selectedGarage = 0;
       this.player.y = garageY + 76;
@@ -1041,8 +1046,11 @@
       this.garageGlow.setVisible(true);
     }
 
-    onCommitKey() {
-      if (this.phase !== "PIT_CHOICE" || this.committed || STATE.paused) return;
+    pitArmed() { return this.time.now - (this.pitOpenedAt || 0) >= 700; }
+
+    onCommitKey(e) {
+      if (e && e.repeat) return; // a held key (still boosting) is not an answer
+      if (this.phase !== "PIT_CHOICE" || this.committed || STATE.paused || !this.pitArmed()) return;
       this.commitAnswer();
     }
 
