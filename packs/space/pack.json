@@ -1,0 +1,96 @@
+{
+ "id": "space",
+ "title": "Space Defender",
+ "version": 1,
+ "files": {
+  "space-tile": "img/space-tile.webp",
+  "ship-blue": "img/ship-blue.webp",
+  "ship-red": "img/ship-red.webp",
+  "ship-green": "img/ship-green.webp",
+  "planet-orange": "img/planet-orange.webp",
+  "planet-blue": "img/planet-blue.webp",
+  "planet-green": "img/planet-green.webp",
+  "planet-pink": "img/planet-pink.webp",
+  "asteroid-1": "img/asteroid-1.webp",
+  "asteroid-2": "img/asteroid-2.webp",
+  "asteroid-3": "img/asteroid-3.webp",
+  "drone": "img/drone.webp",
+  "shield": "img/shield.webp",
+  "explosion": "img/explosion.webp",
+  "star": "img/star.webp",
+  "laser": "img/laser.webp",
+  "boss": "img/boss.webp"
+ },
+ "sizes": {
+  "space-tile": [
+   765,
+   1100
+  ],
+  "ship-blue": [
+   194,
+   260
+  ],
+  "ship-red": [
+   219,
+   260
+  ],
+  "ship-green": [
+   199,
+   260
+  ],
+  "planet-orange": [
+   220,
+   194
+  ],
+  "planet-blue": [
+   214,
+   220
+  ],
+  "planet-green": [
+   219,
+   220
+  ],
+  "planet-pink": [
+   220,
+   219
+  ],
+  "asteroid-1": [
+   230,
+   221
+  ],
+  "asteroid-2": [
+   220,
+   156
+  ],
+  "asteroid-3": [
+   160,
+   149
+  ],
+  "drone": [
+   160,
+   137
+  ],
+  "shield": [
+   138,
+   140
+  ],
+  "explosion": [
+   220,
+   190
+  ],
+  "star": [
+   110,
+   107
+  ],
+  "laser": [
+   120,
+   36
+  ],
+  "boss": [
+   559,
+   560
+  ]
+ },
+ "music": "space",
+ "bossMusic": "boss"
+}

@@ -1,0 +1,86 @@
+{
+ "id": "sea",
+ "title": "Sea Voyage",
+ "version": 1,
+ "files": {
+  "sea-tile": "img/sea-tile.webp",
+  "boat-pirate": "img/boat-pirate.webp",
+  "boat-sail": "img/boat-sail.webp",
+  "boat-fishing": "img/boat-fishing.webp",
+  "buoy": "img/buoy.webp",
+  "whirlpool": "img/whirlpool.webp",
+  "rocks": "img/rocks.webp",
+  "rope": "img/rope.webp",
+  "shark": "img/shark.webp",
+  "fish": "img/fish.webp",
+  "coin": "img/coin.webp",
+  "island-1": "img/island-1.webp",
+  "island-2": "img/island-2.webp",
+  "island-3": "img/island-3.webp",
+  "boss": "img/boss.webp"
+ },
+ "sizes": {
+  "sea-tile": [
+   512,
+   512
+  ],
+  "boat-pirate": [
+   132,
+   300
+  ],
+  "boat-sail": [
+   126,
+   300
+  ],
+  "boat-fishing": [
+   129,
+   300
+  ],
+  "buoy": [
+   144,
+   200
+  ],
+  "whirlpool": [
+   240,
+   215
+  ],
+  "rocks": [
+   220,
+   184
+  ],
+  "rope": [
+   1200,
+   104
+  ],
+  "shark": [
+   170,
+   89
+  ],
+  "fish": [
+   120,
+   79
+  ],
+  "coin": [
+   110,
+   94
+  ],
+  "island-1": [
+   360,
+   352
+  ],
+  "island-2": [
+   360,
+   325
+  ],
+  "island-3": [
+   360,
+   330
+  ],
+  "boss": [
+   540,
+   493
+  ]
+ },
+ "music": "sea",
+ "bossMusic": "boss"
+}

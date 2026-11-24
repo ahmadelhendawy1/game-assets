@@ -1,0 +1,158 @@
+{
+ "id": "runner-rides",
+ "title": "Runner Quest rides: horse and kart",
+ "version": 1,
+ "files": {
+  "horse-body": "ride/horse-body.webp",
+  "horse-leg-hind-far": "ride/horse-leg-hind-far.webp",
+  "horse-leg-front-far": "ride/horse-leg-front-far.webp",
+  "horse-leg-hind-near": "ride/horse-leg-hind-near.webp",
+  "horse-leg-front-near": "ride/horse-leg-front-near.webp",
+  "horse-rider": "ride/horse-rider.webp",
+  "kart-body": "ride/kart-body.webp",
+  "kart-wheel-back": "ride/kart-wheel-back.webp",
+  "kart-wheel-front": "ride/kart-wheel-front.webp",
+  "kart-driver": "ride/kart-driver.webp"
+ },
+ "sizes": {
+  "horse-body": [
+   378,
+   243
+  ],
+  "horse-leg-hind-far": [
+   65,
+   161
+  ],
+  "horse-leg-front-far": [
+   48,
+   157
+  ],
+  "horse-leg-hind-near": [
+   63,
+   163
+  ],
+  "horse-leg-front-near": [
+   47,
+   158
+  ],
+  "horse-rider": [
+   147,
+   260
+  ],
+  "kart-body": [
+   401,
+   179
+  ],
+  "kart-wheel-back": [
+   96,
+   98
+  ],
+  "kart-wheel-front": [
+   68,
+   70
+  ],
+  "kart-driver": [
+   142,
+   178
+  ]
+ },
+ "music": "adventure",
+ "bossMusic": "boss",
+ "rides": {
+  "horse": {
+   "body": "horse-body",
+   "size": [
+    378,
+    243
+   ],
+   "groundY": 352.8,
+   "legs": {
+    "horse-leg-hind-far": {
+     "pivot": [
+      39.9,
+      7.56
+     ],
+     "attach": [
+      107.1,
+      191.1
+     ]
+    },
+    "horse-leg-front-far": {
+     "pivot": [
+      25.2,
+      5.88
+     ],
+     "attach": [
+      268.8,
+      186.9
+     ]
+    },
+    "horse-leg-hind-near": {
+     "pivot": [
+      41.16,
+      7.56
+     ],
+     "attach": [
+      126.0,
+      194.04
+     ]
+    },
+    "horse-leg-front-near": {
+     "pivot": [
+      24.36,
+      5.88
+     ],
+     "attach": [
+      289.8,
+      189.84
+     ]
+    }
+   },
+   "rider": {
+    "key": "horse-rider",
+    "pivot": [
+     49.476,
+     182.28
+    ],
+    "at": [
+     180.6,
+     138.6
+    ]
+   }
+  },
+  "kart": {
+   "body": "kart-body",
+   "size": [
+    401,
+    179
+   ],
+   "groundY": 193.6,
+   "panelTop": 95.8,
+   "wheels": {
+    "kart-wheel-back": {
+     "at": [
+      67.2,
+      140.7
+     ]
+    },
+    "kart-wheel-front": {
+     "at": [
+      261.24,
+      144.9
+     ]
+    }
+   },
+   "driver": {
+    "key": "kart-driver",
+    "pivot": [
+     91.728,
+     165.816
+    ],
+    "at": [
+     144.9,
+     97.44
+    ]
+   }
+  }
+ }
+}

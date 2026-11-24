@@ -1,0 +1,76 @@
+{
+ "id": "kart",
+ "title": "Turbo Kart",
+ "version": 1,
+ "files": {
+  "track-tile": "img/track-tile.webp",
+  "kart-red": "img/kart-red.webp",
+  "kart-blue": "img/kart-blue.webp",
+  "kart-green": "img/kart-green.webp",
+  "kart-yellow": "img/kart-yellow.webp",
+  "oil": "img/oil.webp",
+  "cone": "img/cone.webp",
+  "boost": "img/boost.webp",
+  "coin": "img/coin.webp",
+  "star": "img/star.webp",
+  "tyres": "img/tyres.webp",
+  "garage": "img/garage.webp",
+  "boss": "img/boss.webp"
+ },
+ "sizes": {
+  "track-tile": [
+   467,
+   1400
+  ],
+  "kart-red": [
+   212,
+   240
+  ],
+  "kart-blue": [
+   211,
+   240
+  ],
+  "kart-green": [
+   212,
+   240
+  ],
+  "kart-yellow": [
+   213,
+   240
+  ],
+  "oil": [
+   200,
+   157
+  ],
+  "cone": [
+   106,
+   120
+  ],
+  "boost": [
+   160,
+   147
+  ],
+  "coin": [
+   94,
+   100
+  ],
+  "star": [
+   110,
+   105
+  ],
+  "tyres": [
+   110,
+   140
+  ],
+  "garage": [
+   230,
+   300
+  ],
+  "boss": [
+   222,
+   320
+  ]
+ },
+ "music": "race",
+ "bossMusic": "boss"
+}

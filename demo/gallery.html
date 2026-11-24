@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI4EduTech art packs - gallery</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0f172a; color: #fff; font: 600 14px/1.4 system-ui, "Segoe UI", Tahoma, sans-serif; }
+  #bar { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 96vw; }
+  #bar button { border: 0; border-radius: 999px; padding: 8px 14px; font: 800 13px system-ui; background: #1e293b; color: #fff; cursor: pointer; }
+  #bar button.on { background: #fcd34d; color: #111; }
+  #game { position: absolute; inset: 0; }
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="game"></div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@v1.0.0/ai4-assets.js"></script>
+<script>
+(function () {
+  'use strict';
+  var A = window.AI4Assets, K = A.key, W = 1280, H = 720;
+  function row(s, names, y, size, labels) {
+    var gap = W / (names.length + 1);
+    return names.map(function (n, i) {
+      var im = s.add.image(gap * (i + 1), y, K(n)).setOrigin(0.5, 1);
+      im.setScale(Math.min(size / im.width, size / im.height));
+      if (labels !== false) A.label(s, im, n, { size: 13, offsetY: -4 });
+      return im;
+    });
+  }
+  function bob(s, o, d) { s.tweens.add({ targets: o, y: o.y - (d || 8), duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' }); }
+  var SHOW = {
+    'runner-desert': function (s) {
+      A.parallax(s, { midHeight: 0.5, groundOffset: 70 }); A.ground(s, 0, 620, W, 100);
+      var h = A.hero(s, 260, 620, { height: 170 }).setPose('run'); var r = A.ride(s, 640, 620, { type: 'horse', height: 230 }).setPose('run'); var k = A.ride(s, 1020, 620, { type: 'kart', height: 150 }).setPose('run');
+      var poses = ['run', 'jump', 'fall', 'celebrate', 'idle', 'hurt'], i = 0;
+      s.time.addEvent({ delay: 1600, loop: true, callback: function () { i = (i + 1) % poses.length; [h, r, k].forEach(function (o) { o.setPose(poses[i]); }); s.events.emit('poseName', poses[i]); } });
+      row(s, ['door', 'door-open', 'crystal', 'flag', 'coin', 'heart', 'crate', 'spikes', 'enemy', 'boss'], 330, 120);
+    },
+    sea: function (s) {
+      A.scroller(s, 'sea-tile', { speed: 90 });
+      row(s, ['boat-sail', 'boat-fishing', 'boat-pirate', 'buoy', 'rocks', 'whirlpool', 'shark', 'fish', 'coin'], 300, 120);
+      row(s, ['island-1', 'island-2', 'island-3', 'boss'], 640, 220).forEach(function (o) { bob(s, o, 6); });
+      s.add.image(W / 2, 400, K('rope')).setScale(0.8);
+    },
+    space: function (s) {
+      A.scroller(s, 'space-tile', { speed: 60 });
+      row(s, ['ship-blue', 'ship-red', 'ship-green', 'planet-orange', 'planet-blue', 'planet-green', 'planet-pink'], 300, 130).forEach(function (o, i) { if (i > 2) bob(s, o, 5); });
+      row(s, ['asteroid-1', 'asteroid-2', 'asteroid-3', 'drone', 'shield', 'star', 'laser', 'explosion', 'boss'], 640, 130);
+    },
+    maze: function (s) {
+      for (var x = 0; x < W; x += 80) for (var y = 0; y < H; y += 80) s.add.image(x + 40, y + 40, K('floor')).setDisplaySize(80, 80).setDepth(-50);
+      row(s, ['wall', 'wall-corner', 'torch', 'door', 'door-open', 'checkpoint'], 300, 130);
+      row(s, ['explorer-down', 'explorer-up', 'explorer-right', 'key', 'gem-blue', 'gem-red', 'chest', 'ghost', 'boss'], 640, 150).forEach(function (o, i) { if (i < 3) bob(s, o, 4); });
+    },
+    soccer: function (s) {
+      A.parallax(s); A.ground(s, 0, 600, W, 120);
+      A.hero(s, 130, 610, { height: 200 }).setPose('run');
+      row(s, ['ball', 'cone', 'corner-flag', 'defender-run', 'defender-slide', 'boss'], 600, 170, true).forEach(function (o) { o.x = 300 + (o.x / W) * 900; });
+      var pv = s.add.image(1090, 200, K('penalty-view')).setScale(0.25); A.label(s, pv, 'penalty-view', { size: 13 });
+    },
+    castle: function (s) {
+      A.parallax(s); A.ground(s, 0, 560, W, 160);
+      var h = A.hero(s, 230, 575, { height: 210 });
+      var poses = ['run', 'aim', 'idle', 'jump', 'celebrate'], i = 0; h.setPose('run');
+      s.time.addEvent({ delay: 1500, loop: true, callback: function () { i = (i + 1) % poses.length; h.setPose(poses[i]); if (poses[i] === 'aim') { var a = s.add.image(300, 470, K('arrow')); s.tweens.add({ targets: a, x: 1300, duration: 900, onComplete: function () { a.destroy(); } }); } } });
+      row(s, ['tower-base', 'tower', 'gate', 'slime', 'goblin', 'golem', 'boss'], 560, 150).forEach(function (o, i) { o.x = 420 + i * 135; });
+    },
+    kart: function (s) {
+      A.scroller(s, 'track-tile', { speed: 420, width: 560 });
+      var k = s.add.image(W / 2, 560, K('kart-red')).setScale(0.55); s.tweens.add({ targets: k, x: W / 2 + 90, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+      ['kart-blue', 'kart-green', 'kart-yellow', 'boss'].forEach(function (n, i) { s.add.image(i < 2 ? 120 + i * 120 : 1000 + (i - 2) * 140, 200, K(n)).setScale(0.5); });
+      row(s, ['oil', 'cone', 'boost', 'coin', 'star', 'tyres', 'garage'], 700, 90).forEach(function (o) { o.x = o.x < W / 2 ? o.x * 0.5 : W - (W - o.x) * 0.5; });
+    }
+  };
+  var PACKS = { 'Runner + rides': ['runner-desert', 'runner-rides'], 'Sea': ['sea'], 'Space': ['space'], 'Maze': ['maze'], 'Football': ['soccer'], 'Castle': ['castle'], 'Kart': ['kart'] };
+  var Gallery = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function () { Phaser.Scene.call(this, 'g'); },
+    init: function (d) { this.packs = d.packs || ['runner-desert', 'runner-rides']; },
+    preload: function () { A.preload(this, { pack: this.packs, music: false }); },
+    create: function () { SHOW[this.packs[0]](this); window.__ready = this.packs.join(','); }
+  });
+  var game = new Phaser.Game({ type: Phaser.AUTO, parent: 'game', width: W, height: H, backgroundColor: '#123', scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH }, scene: [] });
+  window.__game = game;
+  function show(name) {
+    window.__ready = null;
+    document.querySelectorAll('.ai4-label').forEach(function (e) { e.remove(); });
+    if (game.scene.getScene('g')) game.scene.remove('g');
+    game.scene.add('g', Gallery, true, { packs: PACKS[name] });
+    document.querySelectorAll('#bar button').forEach(function (b) { b.classList.toggle('on', b.textContent === name); });
+  }
+  window.__show = show;
+  Object.keys(PACKS).forEach(function (n) { var b = document.createElement('button'); b.textContent = n; b.onclick = function () { show(n); }; document.getElementById('bar').appendChild(b); });
+  game.events.once('ready', function () { show('Runner + rides'); });
+})();
+</script>
+</body>
+</html>

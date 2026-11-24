@@ -25,6 +25,8 @@ create() {
   AI4Assets.sfx(this, 'correct');
   AI4Assets.music(this, 'adventure');
   AI4Assets.setMuted(this, true);
+  // top-down games: endless scrolling background
+  const sea = AI4Assets.scroller(this, 'sea-tile', { speed: 120 }); sea.speed = 0;
 }
 ```
 
@@ -35,6 +37,8 @@ Always use a **version tag** (`@v1.0.0`), never `@main`. A tag never changes, so
 | Folder | Contents |
 |---|---|
 | `ai4-assets.js` | The loader: packs, cut-out hero animation, parallax, ground, HTML labels, sound, drawn fallbacks |
+| `packs/sea`, `space`, `maze`, `soccer`, `castle`, `kart` | One pack per game (images + `pack.json` with names and sizes). See `demo/gallery.html` to browse them all |
+| `packs/runner-rides/` | Horse with rider and kart with driver for Runner Quest: `AI4Assets.ride(scene, x, feetY, { type: 'horse' or 'kart' })` |
 | `packs/runner-desert/` | Runner Quest, desert world. Image keys: `door`, `door-open`, `coin`, `flag`, `crystal`, `heart`, `platform`, `crate`, `spikes`, `ground`, `enemy`, `boss`, `bg-far`, `bg-mid`, `hero-full`, plus the 6 hero parts |
 | `audio/sfx/` | 20 effects (.ogg + .mp3): `tap select commit jump land coin correct wrong hurt boss-hit power-up level-up victory tick go whoosh splash door-open shoot kick-ball` |
 | `audio/music/` | 8 seamless loops: `adventure sea space mystery stadium castle race boss` |

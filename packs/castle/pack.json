@@ -1,0 +1,191 @@
+{
+ "id": "castle",
+ "title": "Castle Defense",
+ "version": 1,
+ "files": {
+  "hero-torso": "hero/hero-torso.webp",
+  "hero-head": "hero/hero-head.webp",
+  "hero-armFront": "hero/hero-armFront.webp",
+  "hero-armBack": "hero/hero-armBack.webp",
+  "hero-legFront": "hero/hero-legFront.webp",
+  "hero-legBack": "hero/hero-legBack.webp",
+  "bg-far": "img/bg-far.webp",
+  "ground": "img/ground.webp",
+  "tower": "img/tower.webp",
+  "gate": "img/gate.webp",
+  "tower-base": "img/tower-base.webp",
+  "arrow": "img/arrow.webp",
+  "goblin": "img/goblin.webp",
+  "golem": "img/golem.webp",
+  "slime": "img/slime.webp",
+  "boss": "img/boss.webp"
+ },
+ "sizes": {
+  "hero-torso": [
+   112,
+   172
+  ],
+  "hero-head": [
+   148,
+   140
+  ],
+  "hero-armFront": [
+   113,
+   216
+  ],
+  "hero-armBack": [
+   91,
+   111
+  ],
+  "hero-legFront": [
+   62,
+   154
+  ],
+  "hero-legBack": [
+   80,
+   154
+  ],
+  "bg-far": [
+   2160,
+   720
+  ],
+  "ground": [
+   1238,
+   150
+  ],
+  "tower": [
+   208,
+   330
+  ],
+  "gate": [
+   320,
+   300
+  ],
+  "tower-base": [
+   223,
+   230
+  ],
+  "arrow": [
+   120,
+   20
+  ],
+  "goblin": [
+   195,
+   220
+  ],
+  "golem": [
+   201,
+   220
+  ],
+  "slime": [
+   197,
+   220
+  ],
+  "boss": [
+   515,
+   540
+  ]
+ },
+ "music": "castle",
+ "bossMusic": "boss",
+ "hero": {
+  "parts": {
+   "torso": {
+    "pivot": [
+     60.0,
+     144.0
+    ],
+    "size": [
+     112,
+     172
+    ]
+   },
+   "head": {
+    "pivot": [
+     94.0,
+     136.0
+    ],
+    "size": [
+     148,
+     140
+    ],
+    "attach": [
+     60.0,
+     47.2
+    ],
+    "rest": 0
+   },
+   "armFront": {
+    "pivot": [
+     15.2,
+     118.0
+    ],
+    "size": [
+     113,
+     216
+    ],
+    "attach": [
+     64.0,
+     66.0
+    ],
+    "rest": 30
+   },
+   "armBack": {
+    "pivot": [
+     16.8,
+     15.2
+    ],
+    "size": [
+     91,
+     111
+    ],
+    "attach": [
+     74.0,
+     66.0
+    ],
+    "rest": 24
+   },
+   "legFront": {
+    "pivot": [
+     34.0,
+     8.8
+    ],
+    "size": [
+     62,
+     154
+    ],
+    "attach": [
+     70.0,
+     140.0
+    ],
+    "rest": 0
+   },
+   "legBack": {
+    "pivot": [
+     32.0,
+     8.8
+    ],
+    "size": [
+     80,
+     154
+    ],
+    "attach": [
+     51.2,
+     138.0
+    ],
+    "rest": 0
+   }
+  },
+  "order": [
+   "armBack",
+   "legBack",
+   "legFront",
+   "torso",
+   "head",
+   "armFront"
+  ],
+  "swing": {
+   "armFront": 0.3
+  }
+ }
+}

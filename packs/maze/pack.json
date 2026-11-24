@@ -1,0 +1,91 @@
+{
+ "id": "maze",
+ "title": "Maze Explorer",
+ "version": 1,
+ "files": {
+  "floor": "img/floor.webp",
+  "wall": "img/wall.webp",
+  "wall-corner": "img/wall-corner.webp",
+  "torch": "img/torch.webp",
+  "door": "img/door.webp",
+  "door-open": "img/door-open.webp",
+  "explorer-down": "img/explorer-down.webp",
+  "explorer-up": "img/explorer-up.webp",
+  "explorer-right": "img/explorer-right.webp",
+  "gem-blue": "img/gem-blue.webp",
+  "gem-red": "img/gem-red.webp",
+  "key": "img/key.webp",
+  "chest": "img/chest.webp",
+  "ghost": "img/ghost.webp",
+  "checkpoint": "img/checkpoint.webp",
+  "boss": "img/boss.webp"
+ },
+ "sizes": {
+  "floor": [
+   128,
+   128
+  ],
+  "wall": [
+   160,
+   140
+  ],
+  "wall-corner": [
+   160,
+   156
+  ],
+  "torch": [
+   155,
+   160
+  ],
+  "door": [
+   160,
+   154
+  ],
+  "door-open": [
+   160,
+   145
+  ],
+  "explorer-down": [
+   91,
+   240
+  ],
+  "explorer-up": [
+   89,
+   240
+  ],
+  "explorer-right": [
+   137,
+   240
+  ],
+  "gem-blue": [
+   98,
+   100
+  ],
+  "gem-red": [
+   98,
+   100
+  ],
+  "key": [
+   120,
+   78
+  ],
+  "chest": [
+   150,
+   127
+  ],
+  "ghost": [
+   150,
+   140
+  ],
+  "checkpoint": [
+   140,
+   136
+  ],
+  "boss": [
+   500,
+   433
+  ]
+ },
+ "music": "mystery",
+ "bossMusic": "boss"
+}
