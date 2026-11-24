@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>AI4EduTech asset pack demo - Runner Quest desert</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #0f172a; color: #fff; font: 600 15px/1.4 system-ui, "Segoe UI", Tahoma, sans-serif; }
+  #wrap { position: relative; width: 100%; height: 100%; }
+  #game { position: absolute; inset: 0; }
+  #hud { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 10; background: rgba(15,23,42,.85); border: 2px solid #fcd34d; border-radius: 16px; padding: 8px 16px; text-align: center; max-width: 92vw; }
+  #hud b { color: #fcd34d; }
+  #panel { position: absolute; right: 10px; top: 10px; z-index: 10; background: rgba(15,23,42,.88); border-radius: 14px; padding: 10px; width: 210px; max-height: calc(100% - 140px); overflow: auto; }
+  #panel h3 { margin: 4px 0 6px; font-size: 13px; color: #93c5fd; text-transform: uppercase; letter-spacing: .05em; }
+  #panel button { margin: 2px; padding: 5px 8px; border: 0; border-radius: 999px; background: #1d4ed8; color: #fff; font: 700 12px system-ui; cursor: pointer; }
+  #panel button.m { background: #7c3aed; }
+  #panel .toggle { position: absolute; left: -38px; top: 0; width: 34px; height: 34px; border-radius: 50%; background: #1d4ed8; }
+  #touch { position: absolute; left: 0; right: 0; bottom: 12px; z-index: 10; display: flex; justify-content: space-between; padding: 0 14px; pointer-events: none; }
+  #touch div { display: flex; gap: 10px; }
+  #touch button { pointer-events: auto; width: 64px; height: 64px; border-radius: 50%; border: 3px solid #fff; background: rgba(29,78,216,.75); color: #fff; font: 900 18px system-ui; touch-action: none; }
+  #touch button.enter { width: 92px; border-radius: 32px; background: rgba(22,163,74,.85); }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="game"></div>
+  <div id="hud">Run right with <b>← →</b>, jump with <b>↑ / Space</b>. At the doors, stand in front of one and press <b>Enter</b>. Coins: <b id="coins">0</b></div>
+  <div id="panel"><h3>Sound effects</h3><div id="sfx"></div><h3>Music</h3><div id="music"></div><button id="mute" style="background:#dc2626">Mute</button></div>
+  <div id="touch"><div><button id="tl">◀</button><button id="tr">▶</button></div><div><button id="te" class="enter">ENTER</button><button id="tj">▲</button></div></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/phaser@3.80.1/dist/phaser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/ahmadelhendawy1/game-assets@v1.0.0/ai4-assets.js"></script>
+<script>
+(function () {
+  'use strict';
+  if (!window.Phaser) { document.getElementById('hud').textContent = 'The game engine could not load. Check the internet connection and refresh.'; return; }
+  var A = window.AI4Assets, K = A.key;
+  var input = { left: false, right: false, jump: false, enter: false };
+  function bindTouch(id, k) {
+    var b = document.getElementById(id);
+    b.addEventListener('pointerdown', function (e) { e.preventDefault(); input[k] = true; });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { b.addEventListener(ev, function () { input[k] = false; }); });
+  }
+  bindTouch('tl', 'left'); bindTouch('tr', 'right'); bindTouch('tj', 'jump'); bindTouch('te', 'enter');
+
+  var GROUND_Y = 620, LEVEL_W = 4200;
+  var Play = new Phaser.Class({
+    Extends: Phaser.Scene,
+    initialize: function () { Phaser.Scene.call(this, 'play'); },
+    preload: function () { A.preload(this, { pack: 'runner-desert', music: ['adventure', 'boss'] }); },
+    create: function () {
+      var s = this, coins = 0, answered = false;
+      s.physics.world.setBounds(0, 0, LEVEL_W, 720);
+      s.cameras.main.setBounds(0, 0, LEVEL_W, 720);
+      A.parallax(s, { midHeight: 0.5, groundOffset: 70 });
+      A.ground(s, 0, GROUND_Y, LEVEL_W, 100);
+      var solids = s.physics.add.staticGroup(), coinSpots = [];
+      var floor = s.add.rectangle(LEVEL_W / 2, GROUND_Y + 50, LEVEL_W, 100); s.physics.add.existing(floor, true); solids.add(floor);
+      [[700, 470], [1050, 380], [1500, 470], [2100, 420]].forEach(function (p) {
+        var pl = solids.create(p[0], p[1], K('platform')).setScale(0.6).refreshBody();
+        for (var i = -1; i <= 1; i++) coinSpots.push([p[0] + i * 50, p[1] - 70]);
+      });
+      [[1300, GROUND_Y], [1800, GROUND_Y]].forEach(function (p) { solids.create(p[0], p[1] - 35, K('crate')).setScale(0.5).refreshBody(); });
+      for (var x = 400; x < 2600; x += 180) coinSpots.push([x, GROUND_Y - 60]);
+      s.add.image(1650, GROUND_Y, K('flag')).setOrigin(0.5, 1).setScale(0.55);
+      var spikes = s.physics.add.staticGroup();
+      spikes.create(2400, GROUND_Y - 20, K('spikes')).setScale(0.55).refreshBody();
+
+      var hero = A.hero(s, 150, GROUND_Y, { height: 150 }).setDepth(50);
+      var body = s.physics.add.existing(s.add.zone(150, GROUND_Y - 75, 56, 140)).body;
+      body.setCollideWorldBounds(true).setGravityY(1400).setMaxVelocityY(1100);
+      var heroZone = body.gameObject;
+      s.physics.add.collider(heroZone, solids);
+      s.cameras.main.startFollow(heroZone, true, 0.12, 0.12, -120, 120);
+      coinSpots.forEach(function (c) { addCoin(c[0], c[1]); });
+
+      var enemy = s.physics.add.image(2000, GROUND_Y - 40, K('enemy')).setScale(0.5);
+      enemy.body.setAllowGravity(false).setVelocityX(-90); enemy.setData('min', 1880).setData('max', 2300);
+      var enemyHit = s.physics.add.overlap(heroZone, enemy, function () { hurt(); });
+      s.physics.add.overlap(heroZone, spikes, function () { hurt(); });
+
+      function addCoin(x, y) {
+        var c = s.physics.add.image(x, y, K('coin')).setScale(0.38);
+        c.body.setAllowGravity(false);
+        s.tweens.add({ targets: c, y: y - 8, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: x % 500 });
+        var ov = s.physics.add.overlap(heroZone, c, function () {
+          ov.destroy(); c.destroy(); coins++; document.getElementById('coins').textContent = coins; A.sfx(s, 'coin');
+        });
+      }
+      var hurtUntil = 0;
+      function hurt() {
+        if (s.time.now < hurtUntil) return;
+        hurtUntil = s.time.now + 1200;
+        A.sfx(s, 'hurt'); hero.setPose('hurt').flashHurt(); s.cameras.main.shake(180, 0.008);
+        body.setVelocity(-260 * (hero.scaleX < 0 ? -1 : 1), -420);
+        coins = Math.max(0, coins - 2); document.getElementById('coins').textContent = coins;   // skill mistakes only cost coins
+      }
+
+      // Gate plaza: three doors on ONE row, same height, wide gaps; hero arrives on an empty patch first
+      var PLAZA = 3000, doors = [], answers = ['walks', 'is walking', 'walking'], correct = 0, near = -1;
+      var order = Phaser.Utils.Array.Shuffle([0, 1, 2]);
+      order.forEach(function (ai, i) {
+        var d = s.add.image(PLAZA + 260 + i * 300, GROUND_Y, K('door')).setOrigin(0.5, 1).setScale(0.75);
+        d.setData('answer', ai);
+        doors.push(d);
+      });
+      var boss = s.add.image(PLAZA + 1150, GROUND_Y, K('boss')).setOrigin(0.5, 1).setScale(0.6).setFlipX(false);
+      s.tweens.add({ targets: boss, scaleY: 0.62, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.inOut' });
+
+      var hud = document.getElementById('hud'), asked = false;
+      var keys = s.input.keyboard.addKeys('LEFT,RIGHT,UP,SPACE,ENTER,W,A,D');
+      var wasGround = true, musicOn = false;
+      s.input.once('pointerdown', startMusic); s.input.keyboard.once('keydown', startMusic);
+      function startMusic() { if (!musicOn) { musicOn = true; A.music(s, 'adventure'); } }
+
+      s.events.on('update', function () {
+        var L = keys.LEFT.isDown || keys.A.isDown || input.left, R = keys.RIGHT.isDown || keys.D.isDown || input.right;
+        var J = Phaser.Input.Keyboard.JustDown(keys.UP) || Phaser.Input.Keyboard.JustDown(keys.SPACE) || Phaser.Input.Keyboard.JustDown(keys.W) || (input.jump && !input.__j);
+        input.__j = input.jump;
+        var E = Phaser.Input.Keyboard.JustDown(keys.ENTER) || (input.enter && !input.__e); input.__e = input.enter;
+        var onGround = body.blocked.down || body.touching.down;
+        var hurting = s.time.now < hurtUntil - 800;
+        if (!hurting) {
+          body.setVelocityX(L ? -300 : R ? 300 : 0);
+          if (L) hero.face(-1); if (R) hero.face(1);
+          if (J && onGround) { body.setVelocityY(-760); A.sfx(s, 'jump'); }
+        }
+        if (onGround && !wasGround) { A.sfx(s, 'land'); }
+        wasGround = onGround;
+        hero.setPosition(heroZone.x, heroZone.y + 70);
+        if (!hurting && hero.getPose() !== 'celebrate') hero.setPose(!onGround ? (body.velocity.y < 0 ? 'jump' : 'fall') : (L || R ? 'run' : 'idle'));
+        if (enemy.active) { if (enemy.x < enemy.getData('min')) { enemy.setVelocityX(90); enemy.setFlipX(true); } if (enemy.x > enemy.getData('max')) { enemy.setVelocityX(-90); enemy.setFlipX(false); } }
+        // choice zone
+        if (!asked && heroZone.x > PLAZA) {
+          asked = true; enemyHit.destroy(); enemy.destroy();
+          hud.innerHTML = 'Fill in the blank: <b>She ____ to school by bus every day.</b>';
+          A.sfx(s, 'go');
+          doors.forEach(function (d) { d.lbl = A.label(s, d, answers[d.getData('answer')], { offsetY: -10 }); });
+        }
+        if (asked && !answered) {
+          var idx = -1;
+          doors.forEach(function (d, i) { if (Math.abs(heroZone.x - d.x) < 70 && onGround) idx = i; });
+          if (idx !== near) { if (near >= 0) doors[near].lbl.setHighlight(false); if (idx >= 0) { doors[idx].lbl.setHighlight(true); A.sfx(s, 'select'); } near = idx; }
+          if (E && idx >= 0) commit(idx);
+        }
+      });
+      doors.forEach(function (d, i) { d.setInteractive({ useHandCursor: true }).on('pointerdown', function () { if (asked && !answered) commit(i); }); });
+
+      function commit(i) {
+        answered = true; A.sfx(s, 'commit');
+        var d = doors[i], right = d.getData('answer') === correct;
+        s.time.delayedCall(250, function () {
+          if (right) {
+            d.setTexture(K('door-open')); A.sfx(s, 'door-open'); A.sfx(s, 'correct');
+            hero.setPose('celebrate'); hud.innerHTML = '<b>Correct!</b> "She walks": present simple for a daily habit.';
+            s.time.delayedCall(1400, function () { hero.setPose('idle'); A.music(s, 'boss'); A.sfx(s, 'boss-hit'); s.cameras.main.flash(250); s.tweens.add({ targets: boss, alpha: 0.5, yoyo: true, repeat: 3, duration: 120 }); });
+          } else {
+            A.sfx(s, 'wrong'); s.cameras.main.shake(200, 0.01); hero.setPose('hurt');
+            var good = doors.filter(function (x) { return x.getData('answer') === correct; })[0];
+            good.lbl.setHighlight(true, '#86efac');
+            hud.innerHTML = 'Not quite. <b>"walks"</b>: "every day" is a habit, so we use present simple.';
+            s.time.delayedCall(1500, function () { hero.setPose('idle'); good.setTexture(K('door-open')); A.sfx(s, 'door-open'); });
+          }
+        });
+      }
+    }
+  });
+
+  var game = new Phaser.Game({
+    type: Phaser.AUTO, parent: 'game', width: 1280, height: 720, backgroundColor: '#8ecbf5',
+    physics: { default: 'arcade', arcade: { fixedStep: true, debug: false } },
+    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scene: [Play]
+  });
+  window.__game = game;
+
+  // sound board
+  var sb = document.getElementById('sfx'), mb = document.getElementById('music');
+  A.sfxNames.forEach(function (n) { var b = document.createElement('button'); b.textContent = n; b.onclick = function () { A.sfx(game.scene.getScene('play'), n); }; sb.appendChild(b); });
+  A.musicNames.forEach(function (n) {
+    var b = document.createElement('button'); b.className = 'm'; b.textContent = n;
+    b.onclick = function () { var sc = game.scene.getScene('play'); if (!sc.cache.audio.exists(K('music-' + n))) { sc.load.audio(K('music-' + n), [A.base + 'audio/music/' + n + '.ogg', A.base + 'audio/music/' + n + '.mp3']); sc.load.once('complete', function () { A.music(sc, n); }); sc.load.start(); } else A.music(sc, n); };
+    mb.appendChild(b);
+  });
+  document.getElementById('mute').onclick = function () { var m = A.setMuted(game.scene.getScene('play'), !A.isMuted()); this.textContent = m ? 'Unmute' : 'Mute'; };
+})();
+</script>
+</body>
+</html>
