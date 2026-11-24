@@ -34,6 +34,10 @@
 
   var state = { packs: {}, muted: false, musicKey: null, musicObj: null, failed: {} };
 
+  /* Pack manifests are built into this file (tools/build_loader.py copies every packs/<id>/pack.json here),
+     so all files are queued at once. Adding files while the Phaser loader is already running can stall it. */
+  var PACKS = /*PACKS*/{"runner-desert":{"id":"runner-desert","title":"Runner Quest - Desert world","version":1,"files":{"hero-torso":"hero/torso.webp","hero-head":"hero/head.webp","hero-armFront":"hero/armFront.webp","hero-armBack":"hero/armBack.webp","hero-legFront":"hero/legFront.webp","hero-legBack":"hero/legBack.webp","hero-full":"hero/full.webp","door":"objects/door.webp","door-open":"objects/door-open.webp","crystal":"objects/crystal.webp","coin":"objects/coin.webp","flag":"objects/flag.webp","heart":"objects/heart.webp","platform":"objects/platform.webp","crate":"objects/crate.webp","spikes":"objects/spikes.webp","enemy":"enemies/enemy.webp","boss":"enemies/boss.webp","ground":"objects/ground.webp","bg-far":"bg/far.webp","bg-mid":"bg/mid.webp"},"sizes":{"door":[300,259],"door-open":[300,258],"crystal":[209,220],"coin":[110,97],"flag":[220,204],"heart":[96,80],"platform":[300,152],"crate":[150,138],"spikes":[220,84],"enemy":[200,129],"boss":[520,449],"ground":[1176,160],"bg-far":[2160,720],"bg-mid":[1876,420]},"hero":{"parts":{"torso":{"pivot":[82.8,108.0],"size":[123,118]},"head":{"pivot":[64.8,123.1],"size":[132,128],"attach":[94.3,18.7],"rest":0},"armFront":{"pivot":[16.2,15.1],"size":[110,94],"attach":[54.0,33.1],"rest":42},"armBack":{"pivot":[25.9,18.7],"size":[92,94],"attach":[77.4,36.0],"rest":30},"legFront":{"pivot":[38.9,8.6],"size":[78,166],"attach":[88.2,101.5],"rest":0},"legBack":{"pivot":[29.5,8.6],"size":[96,163],"attach":[72.0,100.1],"rest":0}},"order":["armBack","legBack","legFront","torso","head","armFront"]},"music":"adventure","bossMusic":"boss"}}/*END PACKS*/;
+
   function key(name) { return P + name; }
   function packOf(scene) { return scene.registry.get(P + 'pack') || null; }
 
@@ -48,16 +52,13 @@
       L.audio(key('sfx-' + n), [BASE + 'audio/sfx/' + n + '.ogg', BASE + 'audio/sfx/' + n + '.mp3']);
     });
     var moods = opts.music === false ? [] : (opts.music || null);
-    if (packId) {
-      L.json(key('pack-' + packId), BASE + 'packs/' + packId + '/pack.json');
-      L.once('filecomplete-json-' + key('pack-' + packId), function (k, type, data) {
-        state.packs[packId] = data; scene.registry.set(P + 'pack', data);
-        Object.keys(data.files).forEach(function (name) { L.image(key(name), BASE + 'packs/' + packId + '/' + data.files[name]); });
-        (moods || [data.music, data.bossMusic]).filter(Boolean).forEach(addMusic);
-      });
-    } else {
-      (moods || []).forEach(addMusic);
+    var data = packId ? PACKS[packId] : null;
+    if (packId && !data && root.console) console.warn('[AI4Assets] unknown pack "' + packId + '" - using drawn placeholders');
+    if (data) {
+      state.packs[packId] = data; scene.registry.set(P + 'pack', data);
+      Object.keys(data.files).forEach(function (name) { L.image(key(name), BASE + 'packs/' + packId + '/' + data.files[name]); });
     }
+    (moods || (data ? [data.music, data.bossMusic] : [])).filter(Boolean).forEach(addMusic);
     function addMusic(m) { if (MUSIC.indexOf(m) >= 0) L.audio(key('music-' + m), [BASE + 'audio/music/' + m + '.ogg', BASE + 'audio/music/' + m + '.mp3']); }
     L.once('complete', function () { makeFallbacks(scene); });
   }

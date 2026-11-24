@@ -40,7 +40,8 @@ Always use a **version tag** (`@v1.0.0`), never `@main`. A tag never changes, so
 | `audio/music/` | 8 seamless loops: `adventure sea space mystery stadium castle race boss` |
 | `demo/` | A playable level using everything, also a test page |
 | `source/` | The original ChatGPT images, kept so packs can be re-exported |
-| `tools/` | `synth_sounds.py` (makes every sound from code) and `art/` (slices sheets, rigs the hero, exports WebP) |
+| `tools/` | `synth_sounds.py` (makes every sound from code), `build_loader.py` (copies every `packs/*/pack.json` into the loader; run it after adding a pack) and `art/` (slices sheets, rigs the hero, exports WebP) |
+| `ART-PROMPTS.md` | ChatGPT prompts for every game's art |
 
 The sounds share one brand signature: a rising 3-note bell motif (G–C–E) heard in `correct`, `power-up`, `level-up`, `victory` and inside every music loop.
 
