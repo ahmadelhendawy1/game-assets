@@ -11,6 +11,7 @@
  * (or taps a buoy) in the calm buoy line; the first commit is final; there is no game over.
  * Platform hooks: window.AI4Game.reportProgress / reportComplete, window.AI4Game.studentName, #screen-end "X / Y".
  */
+window.AI4_TEMPLATE = 'sea';
 (function () {
   'use strict';
   var D = window.AI4_GAME_DATA || {};
